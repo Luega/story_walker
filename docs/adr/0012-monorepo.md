@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-09
-- **Deciders:** Story Walker team
+- **Deciders:** Luca Martinelli
 
 ## Context
 
@@ -14,7 +14,7 @@ third repository for the Azure Functions was about to be created. We need a deli
 repository strategy before that fragmentation hardens.
 
 A decisive technical factor: the API and the Functions are both .NET and **share code** —
-the EF Core domain model (`Story`, `Page`, `Character`, `StoryChunk`…) and the Service Bus
+the EF Core domain model (`Story`, `Page`, `Character`, `CharacterPage`…) and the Service Bus
 **message contracts** (the API is the producer, the Functions are the consumers). The
 documentation, likewise, describes the *whole* system, not any single component.
 

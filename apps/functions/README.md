@@ -1,16 +1,32 @@
-# apps/functions — Azure Functions (generation worker)
+# apps/functions — Azure Durable Functions (generation worker)
 
-The story-generation worker: plain, queue-triggered Azure Functions coordinated by
-choreography over Azure Service Bus (see
-[ADR-0004](../../docs/adr/0004-plain-azure-functions-choreography.md)).
+The story-generation worker: an **Azure Durable Functions** orchestration. A
+Service-Bus-triggered starter begins the orchestration; the orchestrator drives the ordered
+stages and uses `Task.WhenAll` for the two parallel fan-out/fan-in stages (see
+[ADR-0004](../../docs/adr/0004-durable-functions-for-generation.md)).
 
-Pipeline stages, one Function per Service Bus queue:
+The text, bible, and all illustration prompts arrive in the agent-authored brief
+([ADR-0013](../../docs/adr/0013-agent-authored-generation-brief.md)); the worker only renders
+images and embeds the text.
 
-1. `Fn_GenerateBible` — characters, art style, palette, outline → enqueues `text`.
-2. `Fn_GenerateText` — full story in a single Foundry pass, split into `Page` rows → enqueues `refimage`.
-3. `Fn_GenerateRefImage` — reference image(s) for new characters → fans out N `pageimage` messages.
-4. `Fn_GeneratePageImage` — per-page image (parallel), idempotent, atomic completion counter,
-   pushes SignalR progress (see [ADR-0005](../../docs/adr/0005-completion-counter-idempotency-deadletter.md)).
+Orchestrator + activities:
+
+1. `PersistBrief` — write the `Character`, `Page`, and `CharacterPage` rows (text + prompts)
+   from the brief JSON (the `Story` row is created by the API at enqueue time).
+2. `EmbedStory` — write the story-summary and character-description vectors to the
+   `STORY`/`CHARACTER` `embedding` columns for retrieval
+   ([ADR-0009](../../docs/adr/0009-postgresql-pgvector-continuity.md)); depends only on the
+   text, so it runs concurrently with the image stages.
+3. `ResolveRefImage` ×M (fan-out) — generate a reference image from the character's
+   `illustrationPrompt` for a new character, or retrieve the existing one for a returning
+   character; the orchestrator awaits all (fan-in).
+4. `GeneratePageImage` ×N (fan-out) — per-page image from the page's `illustrationPrompt`,
+   conditioned on the resolved references; pushes SignalR progress; the orchestrator awaits
+   all (fan-in).
+5. `CompleteStory` — mark complete, push the final SignalR event.
+
+Activities are **idempotent** and use Durable retry policies; failure handling is described in
+[ADR-0005](../../docs/adr/0005-idempotency-and-failure-handling.md).
 
 References the shared libraries in [`../../src`](../../src) for the EF Core model and the
-Service Bus message contracts.
+Service Bus message contract.

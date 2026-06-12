@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-09
-- **Deciders:** Story Walker team
+- **Deciders:** Luca Martinelli
 
 ## Context
 
@@ -14,11 +14,11 @@ browser polling and without the API holding a long-lived request.
 ## Decision
 
 We will use the **Azure SignalR Service**. The Next.js client subscribes to updates for a
-specific `storyId`. The generation Functions push events as work completes:
+specific `storyId`. The generation activities push events as work completes:
 
-- `page-ready { storyId, pageNo, imageUrl }` — from `Fn_GeneratePageImage`,
-- `story-complete { storyId }` — from the instance that finishes the last page,
-- `story-failed { storyId, reason }` — from the dead-letter handler.
+- `page-ready { storyId, pageNo, imageUrl }` — from the `GeneratePageImage` activity,
+- `story-complete { storyId }` — from the `CompleteStory` activity (after the page fan-in),
+- `story-failed { storyId, reason }` — from the orchestrator's failure handler.
 
 SignalR connections are authenticated with the same Clerk JWT
 ([ADR-0002](0002-clerk-for-authentication.md)); a user only receives events for their own
@@ -29,7 +29,7 @@ stories (per-user/per-story groups).
 ### Positive
 - Real-time UX with no polling and no blocked HTTP requests.
 - Managed scaling of WebSocket connections (no connection ceiling on the API).
-- Works cleanly with the fire-and-forget API and the choreographed Functions.
+- Works cleanly with the fire-and-forget API and the Durable Functions orchestration.
 
 ### Negative / trade-offs accepted
 - Another managed service and SDK on both client and server/Functions.

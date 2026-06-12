@@ -1,134 +1,93 @@
 # Entity-Relationship Diagram
 
-Logical data model for Story Walker (PostgreSQL + `pgvector`), in Mermaid. It captures the
-story **lineage** (sequels/prequels), the **per-character** consistency model, the
-**asynchronous generation** status fields, the **agent conversation**, and the **embeddings**
-used for retrieval.
+Minimal logical data model for Story Walker (PostgreSQL + `pgvector`), in Mermaid. A story may
+**reuse** characters and art style from another story; characters are user-owned and shared
+across stories. `pgvector` embeddings power semantic discovery of reusable stories/characters.
 
 > Rationale lives in the ADRs — notably
-> [0005](../adr/0005-completion-counter-idempotency-deadletter.md) (status/counter fields),
-> [0008](../adr/0008-per-character-reference-images.md) (characters & reference images), and
-> [0009](../adr/0009-postgresql-pgvector-continuity.md) (lineage & embeddings).
+> [0008](../adr/0008-per-character-reference-images.md) (characters & reference images),
+> [0009](../adr/0009-postgresql-pgvector-continuity.md) (reuse & embeddings), and
+> [0013](../adr/0013-agent-authored-generation-brief.md) (brief-sourced text & prompt fields).
 
 ```mermaid
 erDiagram
-    USER ||--o{ SERIES : owns
-    USER ||--o{ STORY : owns
-    USER ||--o{ CONVERSATION : has
-
-    SERIES ||--o{ STORY : groups
-    SERIES ||--o{ CHARACTER : "defines (bible)"
-
-    STORY ||--o{ STORY : "parent of (sequel/prequel)"
-    STORY ||--o{ PAGE : contains
-    STORY ||--o{ STORY_CHUNK : "embedded as"
-    STORY ||--o| CONVERSATION : "created via"
-
-    PAGE ||--o{ PAGE_CHARACTER : features
-    CHARACTER ||--o{ PAGE_CHARACTER : "appears in"
-
-    CONVERSATION ||--o{ MESSAGE : contains
+    USER      ||--o{ STORY : owns
+    USER      ||--o{ CHARACTER : owns
+    STORY     ||--o{ STORY : "reuses (based_on_story_id)"
+    STORY     ||--o{ PAGE : contains
+    PAGE      ||--o{ CHARACTER_PAGE : features
+    CHARACTER ||--o{ CHARACTER_PAGE : "appears on"
 
     USER {
         uuid id PK
         string clerk_user_id UK "identity from Clerk (ADR-0002)"
         string email
-        timestamptz created_at
-    }
-
-    SERIES {
-        uuid id PK
-        uuid user_id FK
-        string title
-        string art_style "shared bible: style"
-        string palette "shared bible: colour palette"
-        text summary
-        timestamptz created_at
     }
 
     STORY {
         uuid id PK
-        uuid series_id FK
         uuid user_id FK
-        uuid parent_story_id FK "nullable; self-ref lineage"
-        string relation "original | sequel | prequel"
+        uuid based_on_story_id FK "nullable; story whose characters + art style this one reuses"
         string title
-        string status "Draft | Gathering | Generating | Complete | Failed"
-        int page_count "N"
-        int completed_pages "atomic fan-in counter (ADR-0005)"
-        text brief "confirmed agent brief"
-        timestamptz created_at
-        timestamptz completed_at
+        text summary "from the brief"
+        string status "Draft | Generating | Complete | Failed"
+        string art_style "from the brief; copied from the source story when reusing"
+        string palette "from the brief"
+        vector embedding "pgvector; story summary — for discovery (ADR-0009)"
+        timestamp created_at
     }
 
     CHARACTER {
         uuid id PK
-        uuid series_id FK "shared across the lineage"
+        uuid user_id FK "user-owned; reusable across the user's stories"
         string name
-        text description "bible entry"
-        string reference_image_url "Blob URL (ADR-0008/0010)"
+        text description "from the brief (ADR-0013)"
+        text illustration_prompt "from the brief; generates the reference image (ADR-0013)"
+        string reference_image_url "Blob URL; deterministic identity (ADR-0008/0010)"
         bigint seed "locked per character"
-        uuid created_in_story_id FK "story that introduced it"
-        timestamptz created_at
+        vector embedding "pgvector; description — for discovery (ADR-0009)"
     }
 
     PAGE {
         uuid id PK
         uuid story_id FK
         int page_no
-        text content "generated text for this page"
+        text content "page text, from the brief (ADR-0013)"
+        text illustration_prompt "from the brief; generates the page image (ADR-0013)"
         string image_url "Blob URL; null until image done"
-        string status "Pending | TextDone | Complete | Failed"
-        timestamptz created_at
+        string status "Pending | Complete | Failed"
     }
 
-    PAGE_CHARACTER {
-        uuid page_id FK
+    CHARACTER_PAGE {
         uuid character_id FK
-        string role "which characters appear -> which refs to condition on"
-    }
-
-    STORY_CHUNK {
-        uuid id PK
-        uuid story_id FK
-        string chunk_type "page | summary | lore | character"
-        int page_no "nullable"
-        text content
-        vector embedding "pgvector; ANN index (ADR-0009)"
-        timestamptz created_at
-    }
-
-    CONVERSATION {
-        uuid id PK
-        uuid user_id FK
-        uuid story_id FK "nullable until the story is created"
-        string status "Active | Completed | Abandoned"
-        timestamptz created_at
-    }
-
-    MESSAGE {
-        uuid id PK
-        uuid conversation_id FK
-        string role "user | assistant"
-        text content
-        timestamptz created_at
+        uuid page_id FK
     }
 ```
 
 ## Notes
 
-- **Lineage.** `STORY.parent_story_id` is a self-referencing FK; `relation` records whether a
-  story is an `original`, `sequel`, or `prequel`. All stories of one lineage share a `SERIES`,
-  which owns the bible-level style and the `CHARACTER` set — so sequels inherit characters and
-  art style automatically and only *append* new characters.
-- **Per-character consistency.** Reference images and seeds live on `CHARACTER`, not on
-  `STORY`. `PAGE_CHARACTER` records which characters appear on each page so the image step
-  conditions on exactly the right reference images (ADR-0008).
-- **Async generation.** `STORY.status` + `STORY.completed_pages` and `PAGE.status` drive the
-  choreographed pipeline and the atomic fan-in (ADR-0004 / ADR-0005). They are also the
-  source of truth the dashboard reconciles against if a SignalR event is missed (ADR-0006).
-- **Retrieval.** `STORY_CHUNK.embedding` is a `pgvector` column (with an HNSW/IVFFlat index)
-  holding per-page, summary, lore, and character embeddings used by RAG when generating a
-  sequel/prequel (ADR-0009). Retrieval is always scoped by `user_id` and lineage.
+- **Ownership & reuse.** A `USER` owns `STORY` and `CHARACTER`. Characters are **user-owned and
+  reusable** across the user's stories — a story uses a character by linking it to that story's
+  pages (`CHARACTER_PAGE`). A new story can **reuse** another story's characters and art style;
+  `STORY.based_on_story_id` records the source (nullable). There is no "series" and no
+  sequel/prequel concept — just reuse.
+- **Per-character consistency.** `reference_image_url` and `seed` on `CHARACTER` give a
+  character its **deterministic identity**; reuse is by linking the existing row, never by a
+  similarity match (ADR-0008). `CHARACTER_PAGE` records which characters appear on each page so
+  the image step conditions on exactly the right reference images.
+- **Brief-sourced fields.** The agent-authored generation brief (ADR-0013) populates
+  `STORY.art_style`/`palette`, each `CHARACTER.description`/`illustration_prompt`, and each
+  `PAGE.content`/`illustration_prompt`. The brief is a transport format only — it is **not**
+  persisted as a column; the normalized rows are the source of truth.
+- **Generation status.** `STORY.status` and `PAGE.status` reflect progress. Fan-in is handled
+  by the Durable Functions orchestrator (`Task.WhenAll`), **not** DB counters (ADR-0004/0005);
+  these columns are the dashboard's source of truth if a SignalR event is missed (ADR-0006).
+- **Semantic discovery.** The `embedding` columns on `STORY` (a story-summary vector) and
+  `CHARACTER` (a description vector) hold `pgvector` values with an HNSW index. They power
+  _discovery_ — finding relevant prior stories and reusable characters — while reuse/identity
+  itself is always the deterministic FK link, not the similarity score (ADR-0009). One vector
+  per row (no chunk-level retrieval); a separate chunk table would be reintroduced only if
+  long/chaptered stories later need passage-level search. Query the vector column only when
+  doing similarity search. Scoped by owner.
 - **Images** are bytes in Blob Storage; the DB stores only URLs (`PAGE.image_url`,
   `CHARACTER.reference_image_url`) — ADR-0010.

@@ -1,61 +1,70 @@
-# ADR 0009 — PostgreSQL + pgvector for sequel/prequel continuity
+# ADR 0009 — PostgreSQL + pgvector for story continuity and reuse
 
 - **Status:** Accepted
 - **Date:** 2026-06-09
-- **Deciders:** Story Walker team
+- **Deciders:** Luca Martinelli
 
 ## Context
 
-Users can create a **sequel** or **prequel** of an existing story. The new story must
-connect narratively to the original (continue from its ending, or build up to its
-beginning) and stay consistent with its characters and lore — even across a long series
-where prior content no longer fits in a single prompt. We also want the agent to find a
-relevant existing story when the user describes one in conversation
-("another adventure with Luna in the snow").
+A user can create a new story that **reuses** the characters and art style of an existing one,
+and the new story should stay consistent with that source — even when prior content no longer
+fits in a single prompt. We also want the agent to **find** a relevant existing story or
+character when the user describes one ("another adventure with Luna in the snow"), without the
+user having to point at an exact row.
 
 ## Decision
 
-We will use a **single PostgreSQL database with the `pgvector` extension** for both
-relational data and semantic retrieval — no separate vector database.
+We will use a **single PostgreSQL database with the `pgvector` extension** for both relational
+data and semantic retrieval — no separate vector database.
 
-- A **lineage** is modelled with `Story.parent_story_id` (self-referencing FK) and
-  `Story.relation` (`original` | `sequel` | `prequel`); stories of one lineage share a
-  `Series` that owns the bible and characters.
-- Story content is **chunked and embedded** into a `StoryChunk` table holding a
-  `vector` column (per-page text, a story summary, and character/lore notes), using a
-  Foundry embedding model.
-- Generating a sequel/prequel **inherits** the parent's bible, characters, and seeds
-  (a direct FK lookup — no vectors needed for visual continuity), and uses **vector
-  similarity search (RAG)** to retrieve the most relevant prior passages to ground the new
-  text, plus the parent's ending (sequel) or opening (prequel).
-- On completion, the new story's content is embedded so it becomes searchable for *its*
-  future sequels.
+- **Identity and reuse are deterministic.** Characters are user-owned `CHARACTER` rows carrying
+  their `reference_image_url` and `seed`; a story reuses a character by linking the existing row
+  (`CHARACTER_PAGE`), and records the story it was built on via `STORY.based_on_story_id`. Reuse
+  is never decided by a similarity score.
+- **Discovery is semantic, with one vector per row.** Embeddings are stored **inline**: a
+  story-summary `embedding` column on `STORY` and a description `embedding` column on
+  `CHARACTER` (Foundry embedding model; HNSW index per column). No separate embeddings table —
+  one vector per story/character is enough for *discovery* at this scale.
+- **Authoring a reusing story.** When the agent authors the brief
+  ([ADR-0013](0013-agent-authored-generation-brief.md)), it uses **vector similarity search**
+  over the `STORY` and `CHARACTER` embedding columns to find the most relevant prior story and
+  reusable characters, then references returning characters by `existingCharacterId` and
+  inherits the source story's art style. Once the source story is identified, its full (short)
+  text grounds the new text the agent writes.
+- **Embedding step.** During generation, an `EmbedStory` activity writes the story-summary and
+  character-description embeddings (concurrent with image rendering — see
+  [ADR-0004](0004-durable-functions-for-generation.md)), so the story becomes discoverable later.
 
 ## Consequences
 
 ### Positive
-- One database for relational + vector data → transactional consistency, one backup/ops
-  story, no cross-store sync.
-- RAG keeps prompts bounded even for long series (retrieve relevant lore, not everything).
-- Enables semantic discovery of stories/characters in the agent flow.
+- One database for relational + vector data → transactional consistency, one backup/ops story,
+  no cross-store sync.
+- RAG keeps prompts bounded even when reusing across many prior stories (retrieve relevant
+  content, not everything).
+- Enables semantic discovery of reusable stories/characters in the agent flow, while keeping
+  identity/reuse on hard FK links.
 
 ### Negative / trade-offs accepted
-- `pgvector` at very large scale is less specialised than dedicated vector DBs; acceptable
-  for this product's volume, with ANN indexing (HNSW/IVFFlat) when needed.
-- An embedding step is added to the end of generation; embeddings must be re-generated if
-  content changes.
+- `pgvector` at very large scale is less specialised than dedicated vector DBs; acceptable for
+  this product's volume, with ANN indexing (HNSW/IVFFlat) when needed.
+- **One vector per row** — no passage-level retrieval. Fine for short stories + discovery; if
+  long/chaptered stories later need fine-grained search, reintroduce a separate chunk table.
+- An embedding step is added to generation; embeddings must be re-generated if content changes.
 
 ### Things this decision obliges us to build or watch
-- A chunking strategy and embedding model choice; an ANN index on the `vector` column.
-- Retrieval scoped to the correct lineage/series (and the owning user) for relevance and privacy.
+- An embedding model choice and an HNSW index on each `embedding` column.
+- Read the vector column only when doing similarity search (keep normal row reads lean).
+- Retrieval scoped to the owning user for relevance and privacy.
 - Re-embedding on edits.
 
 ## Alternatives considered
 
 ### Separate dedicated vector DB (e.g., a managed vector service)
-Best-in-class ANN at huge scale. Rejected: adds a second datastore to sync and operate for
-no benefit at our scale; loses transactional consistency with the relational data.
+Best-in-class ANN at huge scale. Rejected: adds a second datastore to sync and operate for no
+benefit at our scale; loses transactional consistency with the relational data.
 
-### No retrieval — stuff the whole parent story into the prompt
-Simplest. Works for a single short parent. Rejected: does not scale to multi-book series and
-wastes context/cost.
+### Using similarity to decide character reuse
+Let semantic search pick "the same character." Rejected: identity must be exact — a fuzzy match
+could reuse the wrong character or miss one, breaking the visual consistency ADR-0008 enforces.
+Similarity is for *discovery*; the actual reuse is always the deterministic FK link.

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-09
-- **Deciders:** Story Walker team
+- **Deciders:** Luca Martinelli
 
 ## Context
 
