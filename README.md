@@ -1,4 +1,4 @@
-# Story Walker — Architecture Documentation
+# Story Walker
 
 Story Walker is a kids' story-generation app. An authenticated user opens a private
 dashboard of their stories, chats with an AI agent that gathers the details for a new
@@ -6,48 +6,40 @@ story, and a background worker generates 0–10 pages of consistent text and ill
 Users can also create a **sequel** or **prequel** of an existing story, reusing its
 characters and art style for continuity.
 
-## Stack at a glance
+## Stack
 
-| Concern           | Technology                                |
-| ----------------- | ----------------------------------------- |
-| Front-end         | Next.js 16                                |
-| API               | .NET ASP.NET Core                         |
-| Generation worker | Azure Functions (plain, queue-triggered)  |
-| Messaging         | Azure Service Bus                         |
-| Realtime          | Azure SignalR Service                     |
-| Database          | PostgreSQL + `pgvector`                   |
-| Image storage     | Azure Blob Storage                        |
-| Authentication    | Clerk                                     |
-| AI (agent + gen)  | Microsoft Foundry                         |
-| Repository        | Monorepo (one Git repo, path-filtered CI) |
+| Concern           | Technology              |
+| ----------------- | ----------------------- |
+| Front-end         | Next.js                 |
+| API               | ASP .NET Core           |
+| Generation worker | Azure Functions         |
+| Messaging         | Azure Service Bus       |
+| Realtime          | Azure SignalR Service   |
+| Database          | PostgreSQL + `pgvector` |
+| Image storage     | Azure Blob Storage      |
+| Authentication    | Clerk                   |
+| AI (agent + gen)  | Microsoft Foundry       |
 
 ## Repository layout
 
-All components live in a single monorepo (see [ADR-0012](docs/adr0012-monorepo.md)). API and
-Functions share the .NET domain model and the Service Bus message contracts via `src/`;
-documentation describes the whole system and lives at the root.
+All components live in a single monorepo (see [ADR-0012](docs/adr0012-monorepo.md)).
 
 ```
-story_walker/                       # monorepo root (this repository)
-├── docs/                           # architecture documentation
-│   ├── README.md                   # this file
+story_walker/                       # monorepo root
+├── docs/                             # architecture documentation
 │   ├── docs/adr                        # Architecture Decision Records
-│   └── docs/diagrams/                   # C4 + ER (Mermaid)
+│   └── docs/diagrams/                  # C4 + ER
 ├── apps/                           # deployable applications
-│   ├── ui/                         # Next.js 16 front-end
-│   ├── api/                        # ASP.NET Core API
-│   └── functions/                  # Azure Functions (generation worker)
+│   ├── ui/                           # Next.js front-end
+│   ├── api/                          # ASP.NET Core API
+│   └── functions/                    # Azure Functions
 ├── src/                            # shared .NET libraries
-│   ├── StoryWalker.Domain/         # entities + EF Core model
-│   └── StoryWalker.Contracts/      # DTOs + Service Bus message schemas
-├── infra/                          # infrastructure-as-code (Bicep/Terraform)
-├── .github/workflows/              # CI/CD pipelines (path-filtered per component)
+│   ├── StoryWalker.Domain/           # entities + EF Core model
+│   └── StoryWalker.Contracts/        # DTOs + Service Bus message schemas
+├── infra/                          # infrastructure-as-code
+├── .github/workflows/              # CI/CD pipelines
 └── README.md                       # repository entry point
 ```
-
-> **Path-filtered CI:** each `apps/<component>/**` change triggers only that component's
-> pipeline; a change under `src/**` triggers the API _and_ Functions pipelines, since both
-> depend on the shared libraries. Documentation-only changes (`docs/**`, `**.md`) build nothing.
 
 ## Documents
 
