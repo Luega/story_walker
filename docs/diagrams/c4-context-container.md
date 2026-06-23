@@ -88,7 +88,7 @@ sequenceDiagram
     participant SR as SignalR
 
     U->>API: Chat with agent (gather details)
-    API->>AI: Run agent; emit generation brief (JSON: chars, palette, style, page text + prompts)
+    API->>AI: Run agent — emit generation brief (JSON: chars, palette, style, page text + prompts)
     API->>DB: Insert Story (status=Generating)
     API->>SB: Enqueue generation brief (validated JSON)
     API-->>U: 202 Accepted
@@ -99,7 +99,7 @@ sequenceDiagram
     O->>ACT: CallActivity PersistBrief
     ACT->>DB: Save characters + N Page rows + character_page links (text + prompts)
 
-    O->>ACT: CallActivity EmbedStory (concurrent; needs only text)
+    O->>ACT: CallActivity EmbedStory (concurrent — needs only text)
     ACT->>AI: Embed story summary + character descriptions
     ACT->>DB: Write STORY / CHARACTER embedding columns (pgvector)
 
