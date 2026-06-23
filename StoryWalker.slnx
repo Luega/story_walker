@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StoryWalker.Contracts/StoryWalker.Contracts.csproj" />
+    <Project Path="src/StoryWalker.Domain/StoryWalker.Domain.csproj" />
+  </Folder>
+</Solution>

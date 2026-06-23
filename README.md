@@ -63,3 +63,4 @@ story_walker/                       # monorepo root
 - [0011 — Microsoft Foundry for the agent and generation](docs/adr/0011-microsoft-foundry-agent-and-generation.md)
 - [0012 — Monorepo for all components](docs/adr/0012-monorepo.md)
 - [0013 — Agent-authored generation brief (JSON contract)](docs/adr/0013-agent-authored-generation-brief.md)
+- [0014 — Domain entities and the EF Core model share one project](docs/adr/0014-entities-and-ef-model-in-one-project.md)

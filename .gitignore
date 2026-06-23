@@ -1,0 +1,78 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+[Dd]ebugPublic/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pidb
+*.svclog
+*.scc
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+.nuget/
+
+# Rider / Visual Studio / VS Code
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+# EF Core
+*.db
+*.db-shm
+*.db-wal
+
+# Azure Functions
+local.settings.json
+bin
+obj
+
+# ASP.NET local secrets / env
+*.dev.env
+.env
+secrets.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (apps/ui — Next.js)
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
