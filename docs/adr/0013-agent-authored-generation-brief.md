@@ -24,7 +24,7 @@ brief as JSON** (using Foundry structured outputs). The API validates the JSON a
 schema and enqueues it to Azure Service Bus ([ADR-0003](0003-async-generation-via-service-bus.md));
 the Durable worker ([ADR-0004](0004-durable-functions-for-generation.md)) only **renders
 images** from it. The brief is the producer/consumer contract and lives in
-`StoryWalker.Contracts`.
+`StoryWalker.Application` ([ADR-0015](0015-layered-architecture.md)).
 
 ```jsonc
 {
@@ -77,7 +77,7 @@ images** from it. The brief is the producer/consumer contract and lives in
 
 ### Things this decision obliges us to build or watch
 - A JSON schema + validation in the API; a regenerate/repair path on validation failure.
-- The schema DTO in `StoryWalker.Contracts`, kept in sync across producer and consumer.
+- The schema DTO in `StoryWalker.Application`, kept in sync across producer and consumer.
 - When reusing a story, the agent must resolve reused characters to `existingCharacterId` (via
   the pgvector retrieval in [ADR-0009](0009-postgresql-pgvector-continuity.md)).
 

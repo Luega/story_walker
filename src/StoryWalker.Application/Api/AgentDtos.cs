@@ -1,4 +1,4 @@
-namespace StoryWalker.Contracts.Api;
+namespace StoryWalker.Application.Api;
 
 // Minimal agent-chat shape — tentative. The Foundry information-gathering agent (ADR-0011)
 // endpoint is not yet designed; refine these when it is.

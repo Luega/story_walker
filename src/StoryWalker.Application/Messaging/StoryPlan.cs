@@ -1,4 +1,4 @@
-namespace StoryWalker.Contracts.Messaging;
+namespace StoryWalker.Application.Messaging;
 
 /// <summary>
 /// Output of the <c>PersistBrief</c> activity and the orchestrator's working state: the

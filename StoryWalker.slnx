@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/StoryWalker.Contracts/StoryWalker.Contracts.csproj" />
+    <Project Path="src/StoryWalker.Application/StoryWalker.Application.csproj" />
     <Project Path="src/StoryWalker.Domain/StoryWalker.Domain.csproj" />
+    <Project Path="src/StoryWalker.Infrastructure/StoryWalker.Infrastructure.csproj" />
   </Folder>
 </Solution>

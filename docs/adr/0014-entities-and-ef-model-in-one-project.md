@@ -1,8 +1,13 @@
 # ADR 0014 — Domain entities and the EF Core model share one project
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0015](0015-layered-architecture.md)
 - **Date:** 2026-06-23
 - **Deciders:** Luca Martinelli
+
+> **Superseded (2026-06-24).** We adopted a layered architecture
+> ([ADR-0015](0015-layered-architecture.md)): the domain is now a dependency-free project and
+> the EF Core model moved to `StoryWalker.Infrastructure`. The decision below — keeping entities
+> and the EF model in one project — no longer holds.
 
 ## Context
 

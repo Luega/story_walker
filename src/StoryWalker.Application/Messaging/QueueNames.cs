@@ -1,4 +1,4 @@
-namespace StoryWalker.Contracts.Messaging;
+namespace StoryWalker.Application.Messaging;
 
 /// <summary>
 /// Azure Service Bus entity names shared by producer (<c>apps/api</c>) and consumer

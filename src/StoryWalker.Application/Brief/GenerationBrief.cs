@@ -1,4 +1,4 @@
-namespace StoryWalker.Contracts.Brief;
+namespace StoryWalker.Application.Brief;
 
 /// <summary>
 /// The complete, schema-validated generation brief the agent emits when it has enough

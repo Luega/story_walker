@@ -30,9 +30,10 @@ story_walker/
 │   ├── ui/                     # Next.js 16
 │   ├── api/                    # ASP.NET Core
 │   └── functions/              # Azure Functions (generation worker)
-├── src/
-│   ├── StoryWalker.Domain/     # entities + EF Core model (shared)
-│   └── StoryWalker.Contracts/  # DTOs + Service Bus message schemas (shared)
+├── src/                          # shared .NET libraries, layered (see ADR-0015)
+│   ├── StoryWalker.Domain/         # entities + enums (pure)
+│   ├── StoryWalker.Application/     # DTOs + Service Bus message schemas + use cases
+│   └── StoryWalker.Infrastructure/ # EF Core model + external adapters
 ├── infra/                      # IaC (Bicep/Terraform)
 └── .github/workflows/          # CI/CD with path filters per component
 ```
@@ -46,8 +47,9 @@ pipelines of every component that depends on them (API and Functions).
 ### Positive
 - **Atomic cross-cutting changes**: a Service Bus message schema change updates the producer
   (API) and consumers (Functions) in one commit/PR — impossible to keep coherent across repos.
-- **Shared .NET libraries** (`Domain`, `Contracts`) are referenced directly, with no
-  cross-repo publishing or version drift.
+- **Shared .NET libraries** (`Domain`, `Application`, `Infrastructure` — see
+  [ADR-0015](0015-layered-architecture.md)) are referenced directly, with no cross-repo
+  publishing or version drift.
 - **Documentation has a natural home** at the root, describing the whole system.
 - A single clone, a single CI configuration, simpler onboarding for a small team.
 - Independent deploys are preserved via path filters.

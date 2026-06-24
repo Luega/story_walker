@@ -32,9 +32,10 @@ story_walker/                       # monorepo root
 │   ├── ui/                           # Next.js front-end
 │   ├── api/                          # ASP.NET Core API
 │   └── functions/                    # Azure Functions
-├── src/                            # shared .NET libraries
-│   ├── StoryWalker.Domain/           # entities + EF Core model
-│   └── StoryWalker.Contracts/        # DTOs + Service Bus message schemas
+├── src/                            # shared .NET libraries (layered — ADR-0015)
+│   ├── StoryWalker.Domain/           # entities + enums (pure; no EF, no DTOs)
+│   ├── StoryWalker.Application/      # DTOs, generation-brief + message contracts, use cases
+│   └── StoryWalker.Infrastructure/   # EF Core model (DbContext + configurations), adapters
 ├── infra/                          # infrastructure-as-code
 ├── .github/workflows/              # CI/CD pipelines
 └── README.md                       # repository entry point
@@ -63,4 +64,5 @@ story_walker/                       # monorepo root
 - [0011 — Microsoft Foundry for the agent and generation](docs/adr/0011-microsoft-foundry-agent-and-generation.md)
 - [0012 — Monorepo for all components](docs/adr/0012-monorepo.md)
 - [0013 — Agent-authored generation brief (JSON contract)](docs/adr/0013-agent-authored-generation-brief.md)
-- [0014 — Domain entities and the EF Core model share one project](docs/adr/0014-entities-and-ef-model-in-one-project.md)
+- [0014 — Domain entities and the EF Core model share one project](docs/adr/0014-entities-and-ef-model-in-one-project.md) *(superseded by 0015)*
+- [0015 — Layered architecture (Domain / Application / Infrastructure)](docs/adr/0015-layered-architecture.md)

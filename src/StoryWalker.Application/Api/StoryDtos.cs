@@ -1,4 +1,4 @@
-namespace StoryWalker.Contracts.Api;
+namespace StoryWalker.Application.Api;
 
 // Inferred REST DTOs for the dashboard / story-viewer / agent flow. No endpoint contract is
 // documented yet (C4 container diagram only) — refine when the API endpoints are designed.

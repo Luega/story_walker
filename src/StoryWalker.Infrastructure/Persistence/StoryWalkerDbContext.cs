@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StoryWalker.Domain.Entities;
 
-namespace StoryWalker.Domain.Persistence;
+namespace StoryWalker.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core model for the Story Walker domain (PostgreSQL + pgvector — ADR-0009). Referenced by

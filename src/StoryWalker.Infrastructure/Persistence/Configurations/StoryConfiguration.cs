@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StoryWalker.Domain.Entities;
 
-namespace StoryWalker.Domain.Persistence.Configurations;
+namespace StoryWalker.Infrastructure.Persistence.Configurations;
 
 public class StoryConfiguration : IEntityTypeConfiguration<Story>
 {
