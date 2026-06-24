@@ -6,10 +6,8 @@ namespace StoryWalker.Domain.Entities;
 /// One page of a story. Text and the illustration prompt come from the brief (ADR-0013);
 /// <see cref="ImageUrl"/> is filled in by the <c>GeneratePageImage</c> activity (null until done).
 /// </summary>
-public class Page
+public class Page : EntityBase
 {
-    public Guid Id { get; set; }
-
     public Guid StoryId { get; set; }
 
     public int PageNo { get; set; }
@@ -28,5 +26,5 @@ public class Page
     public Story Story { get; set; } = null!;
 
     /// <summary>Which characters appear on this page (populates CHARACTER_PAGE).</summary>
-    public ICollection<CharacterPage> CharacterPages { get; set; } = new List<CharacterPage>();
+    public ICollection<CharacterPage> CharacterPages { get; set; } = [];
 }

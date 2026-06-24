@@ -23,4 +23,41 @@ public class StoryWalkerDbContext(DbContextOptions<StoryWalkerDbContext> options
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StoryWalkerDbContext).Assembly);
     }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ApplyTimestamps();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        ApplyTimestamps();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Stamps <see cref="EntityBase.CreatedAt"/> on insert and <see cref="EntityBase.UpdatedAt"/>
+    /// on update, so callers never set them by hand. <see cref="CharacterPage"/> has no
+    /// timestamps and is unaffected.
+    /// </summary>
+    private void ApplyTimestamps()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<EntityBase>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreatedAt = now;
+                    break;
+                case EntityState.Modified:
+                    entry.Entity.UpdatedAt = now;
+                    break;
+            }
+        }
+    }
 }

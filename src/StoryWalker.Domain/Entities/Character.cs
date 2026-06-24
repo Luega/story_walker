@@ -5,10 +5,8 @@ namespace StoryWalker.Domain.Entities;
 /// and <see cref="Seed"/> give the character its deterministic visual identity (ADR-0008);
 /// reuse is always by linking this row, never by a similarity match (ADR-0009).
 /// </summary>
-public class Character
+public class Character : EntityBase
 {
-    public Guid Id { get; set; }
-
     /// <summary>User-owned; reusable across the user's stories.</summary>
     public Guid UserId { get; set; }
 
@@ -36,5 +34,5 @@ public class Character
     public User User { get; set; } = null!;
 
     /// <summary>The pages this character appears on (populates the image conditioning).</summary>
-    public ICollection<CharacterPage> CharacterPages { get; set; } = new List<CharacterPage>();
+    public ICollection<CharacterPage> CharacterPages { get; set; } = [];
 }

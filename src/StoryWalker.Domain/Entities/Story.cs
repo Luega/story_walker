@@ -8,10 +8,8 @@ namespace StoryWalker.Domain.Entities;
 /// (<see cref="ArtStyle"/>, <see cref="Palette"/>, <see cref="Summary"/>) come from the
 /// agent-authored generation brief (ADR-0013).
 /// </summary>
-public class Story
+public class Story : EntityBase
 {
-    public Guid Id { get; set; }
-
     public Guid UserId { get; set; }
 
     /// <summary>Nullable; the story whose characters + art style this one reuses (ADR-0009).</summary>
@@ -37,12 +35,10 @@ public class Story
     /// </summary>
     public float[]? Embedding { get; set; }
 
-    public DateTime CreatedAt { get; set; }
-
     public User User { get; set; } = null!;
 
     /// <summary>The story this one reuses characters/art style from (self-reference; nullable).</summary>
     public Story? BasedOnStory { get; set; }
 
-    public ICollection<Page> Pages { get; set; } = new List<Page>();
+    public ICollection<Page> Pages { get; set; } = [];
 }
