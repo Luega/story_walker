@@ -27,9 +27,9 @@ Two facts shape the choice here:
   [ER diagram](../diagrams/er-diagram.md)); the product is a kids' story app, not a system
   that must survive swapping its ORM.
 
-> Note: `infra/` in this repo is **infrastructure-as-code** (provisioning Azure resources),
+> Note: `iac/` in this repo is **infrastructure-as-code** (provisioning Azure resources),
 > unrelated to the Clean-architecture "Infrastructure layer". Persistence is application code
-> that compiles into an assembly, so it cannot live under `infra/`.
+> that compiles into an assembly, so it cannot live under `iac/`.
 
 ## Decision
 
@@ -76,7 +76,7 @@ indirection (extra projects, repository interfaces, storage mapping) with little
 the entities already are the persistence model and the schema is small and stable. The folder
 structure keeps the option open.
 
-### Put persistence under `infra/`
-Rejected on a category error: `infra/` is infrastructure-as-code (Bicep/Terraform that
+### Put persistence under `iac/`
+Rejected on a category error: `iac/` is infrastructure-as-code (Bicep/Terraform that
 provisions cloud resources), not a .NET layer. Persistence is compiled C# that both apps
 reference, so it belongs in a shared library under `src/`.

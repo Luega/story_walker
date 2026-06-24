@@ -34,7 +34,7 @@ story_walker/
 │   ├── StoryWalker.Domain/         # entities + enums (pure)
 │   ├── StoryWalker.Application/     # DTOs + Service Bus message schemas + use cases
 │   └── StoryWalker.Infrastructure/ # EF Core model + external adapters
-├── infra/                      # IaC (Bicep/Terraform)
+├── iac/                        # IaC (Bicep/Terraform)
 └── .github/workflows/          # CI/CD with path filters per component
 ```
 

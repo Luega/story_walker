@@ -36,7 +36,7 @@ story_walker/                       # monorepo root
 │   ├── StoryWalker.Domain/           # entities + enums (pure; no EF, no DTOs)
 │   ├── StoryWalker.Application/      # DTOs, generation-brief + message contracts, use cases
 │   └── StoryWalker.Infrastructure/   # EF Core model (DbContext + configurations), adapters
-├── infra/                          # infrastructure-as-code
+├── iac/                            # infrastructure-as-code (Bicep/Terraform)
 ├── .github/workflows/              # CI/CD pipelines
 └── README.md                       # repository entry point
 ```

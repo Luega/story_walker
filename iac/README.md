@@ -1,4 +1,4 @@
-# infra — Infrastructure as Code
+# iac — Infrastructure as Code
 
 Infrastructure-as-code (Bicep or Terraform) provisioning the Azure resources for Story Walker:
 
