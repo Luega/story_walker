@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Story Walker (local)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "storywalker",
+      "Username": "storywalker",
+      "SSLMode": "prefer"
+    }
+  }
+}

@@ -46,6 +46,19 @@ The connection string lives in [`appsettings.Development.json`](appsettings.Deve
 under `ConnectionStrings:Postgres`; override it with the `ConnectionStrings__Postgres`
 environment variable.
 
+## Inspect the database (pgAdmin)
+
+`docker compose up` also starts **pgAdmin** for browsing PostgreSQL:
+
+- URL — <http://localhost:5050> (login `admin@storywalker.app` / `admin`)
+- The **Story Walker (local)** server is pre-registered (see
+  [`../../docker/pgadmin/servers.json`](../../docker/pgadmin/servers.json)); expand it and enter
+  the DB password `storywalker` once. Tables are under
+  *Story Walker (local) → Databases → storywalker → Schemas → public → Tables*.
+
+Prefer the terminal? `docker exec -it storywalker-postgres psql -U storywalker -d storywalker`
+(table names are PascalCase, so quote them: `SELECT * FROM "Stories";`).
+
 ## Migrations
 
 EF Core migrations live in

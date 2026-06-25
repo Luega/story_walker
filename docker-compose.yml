@@ -32,5 +32,24 @@ services:
       postgres:
         condition: service_healthy    # wait for the DB before migrating/seeding on startup
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: storywalker-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@storywalker.app
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"               # desktop mode: no extra login page
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"  # skip the master-password prompt
+    ports:
+      - "5050:80"                     # browse at http://localhost:5050
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      # Pre-registers the "Story Walker (local)" connection (Host=postgres, service name).
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  pgadmin-data:
