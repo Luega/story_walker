@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: storywalker-postgres
+    environment:
+      POSTGRES_USER: storywalker
+      POSTGRES_PASSWORD: storywalker
+      POSTGRES_DB: storywalker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storywalker -d storywalker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .                      # monorepo root, so the Dockerfile can reach src/
+      dockerfile: apps/api/Dockerfile
+    container_name: storywalker-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Inside the compose network the DB is reached by service name, not localhost.
+      # This env var overrides ConnectionStrings:Postgres from appsettings.
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker"
+    ports:
+      - "5080:8080"                   # host 5080 -> container 8080
+    depends_on:
+      postgres:
+        condition: service_healthy    # wait for the DB before migrating/seeding on startup
+
+volumes:
+  postgres-data:

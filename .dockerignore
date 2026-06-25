@@ -1,0 +1,15 @@
+# Keep the build context small and reproducible (context is the monorepo root).
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/node_modules
+.git
+.github
+.config
+docs
+iac
+apps/ui
+apps/functions
+**/*.user
+**/appsettings.*.local.json
