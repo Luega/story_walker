@@ -5,11 +5,7 @@ namespace StoryWalker.Application.Api;
 // Status fields are strings to keep Contracts free of a Domain dependency (wire-friendly).
 
 /// <summary>Dashboard list item — a story summary card.</summary>
-public record StorySummaryDto(
-    Guid Id,
-    string Title,
-    string Status,
-    DateTime CreatedAt);
+public record StorySummaryDto(Guid Id, string Title, string Status, DateTime CreatedAt);
 
 /// <summary>Full story for the live viewer.</summary>
 public record StoryDto(
@@ -21,21 +17,15 @@ public record StoryDto(
     string Palette,
     Guid? BasedOnStoryId,
     IReadOnlyList<PageDto> Pages,
-    IReadOnlyList<CharacterDto> Characters);
+    IReadOnlyList<CharacterDto> Characters
+);
 
-public record PageDto(
-    int PageNo,
-    string Content,
-    string? ImageUrl,
-    string Status);
+public record PageDto(int PageNo, string Content, string? ImageUrl, string Status);
 
-public record CharacterDto(
-    Guid Id,
-    string Name,
-    string Description,
-    string? ReferenceImageUrl);
+public record CharacterDto(Guid Id, string Name, string Description, string? ReferenceImageUrl);
 
 /// <summary>Body of the <c>202 Accepted</c> returned when generation is enqueued (ADR-0003).</summary>
-public record CreateStoryResponse(
-    Guid StoryId,
-    string Status);
+public record CreateStoryResponse(Guid StoryId, string Status);
+
+/// <summary>Body of <c>PATCH /stories/{id}</c> — renames a story (title only).</summary>
+public record UpdateStoryTitleRequest(string Title);
