@@ -7,4 +7,7 @@
     <Project Path="src/StoryWalker.Domain/StoryWalker.Domain.csproj" />
     <Project Path="src/StoryWalker.Infrastructure/StoryWalker.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StoryWalker.Api.Tests/StoryWalker.Api.Tests.csproj" />
+  </Folder>
 </Solution>
