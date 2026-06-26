@@ -66,3 +66,5 @@ story_walker/                       # monorepo root
 - [0013 — Agent-authored generation brief (JSON contract)](docs/adr/0013-agent-authored-generation-brief.md)
 - [0014 — Domain entities and the EF Core model share one project](docs/adr/0014-entities-and-ef-model-in-one-project.md) *(superseded by 0015)*
 - [0015 — Layered architecture (Domain / Application / Infrastructure)](docs/adr/0015-layered-architecture.md)
+- [0016 — Central Package Management for NuGet versions](docs/adr/0016-central-package-management.md)
+- [0017 — Real PostgreSQL via Testcontainers for integration tests](docs/adr/0017-testcontainers-for-integration-tests.md)

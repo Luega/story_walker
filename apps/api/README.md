@@ -59,6 +59,23 @@ environment variable.
 Prefer the terminal? `docker exec -it storywalker-postgres psql -U storywalker -d storywalker`
 (table names are PascalCase, so quote them: `SELECT * FROM "Stories";`).
 
+## Tests
+
+Endpoint integration tests live in
+[`../../tests/StoryWalker.Api.Tests`](../../tests/StoryWalker.Api.Tests). They boot the real API in
+memory (`WebApplicationFactory<Program>`) against a **throwaway PostgreSQL** started with
+Testcontainers (`pgvector/pgvector:pg17`), so the relational behaviour the endpoints rely on (cascade
+deletes, the `BasedOnStory` `Restrict` FK → `409`, EF→SQL projections) is exercised for real. The
+container migrates once and Respawn resets the data between tests.
+
+```bash
+dotnet test StoryWalker.slnx     # requires Docker running (Testcontainers pulls/starts Postgres)
+```
+
+The API exposes its `internal` `Program` class to the test assembly via `<InternalsVisibleTo>` in
+[`StoryWalker.Api.csproj`](StoryWalker.Api.csproj). The test environment is `Testing`, so the startup
+auto-migrate/seed block (Development-only) stays off — the test fixture owns migration and seeding.
+
 ## Migrations
 
 EF Core migrations live in
