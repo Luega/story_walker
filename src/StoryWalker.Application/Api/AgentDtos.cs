@@ -1,14 +1,16 @@
 namespace StoryWalker.Application.Api;
 
-// Minimal agent-chat shape — tentative. The Foundry information-gathering agent (ADR-0011)
-// endpoint is not yet designed; refine these when it is.
+// Wire shape for the agent-chat endpoint (POST /stories/conversations). The conversation id is
+// provider-agnostic: the server issues it on the first turn and the client round-trips it.
 
-/// <param name="StoryId">Set to continue an existing draft conversation; null to start a new one.</param>
+/// <param name="ConversationId">Continue an existing conversation; null to start a new one.</param>
 public record AgentMessageRequest(
-    Guid? StoryId,
+    string? ConversationId,
     string Message);
 
+/// <param name="ConversationId">The conversation to continue on the next turn.</param>
 /// <param name="BriefReady">True when the agent has emitted a complete brief and generation can start.</param>
 public record AgentMessageResponse(
+    string ConversationId,
     string Reply,
     bool BriefReady);
