@@ -19,6 +19,10 @@ public class StoryWalkerDbContext(DbContextOptions<StoryWalkerDbContext> options
 
     public DbSet<CharacterPage> CharacterPages => Set<CharacterPage>();
 
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StoryWalkerDbContext).Assembly);
