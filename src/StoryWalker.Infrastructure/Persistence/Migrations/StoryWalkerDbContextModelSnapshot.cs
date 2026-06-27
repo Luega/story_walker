@@ -80,6 +80,64 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                     b.ToTable("CharacterPages");
                 });
 
+            modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("StoryWalker.Domain.Entities.ConversationMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId", "Seq")
+                        .IsUnique();
+
+                    b.ToTable("ConversationMessages");
+                });
+
             modelBuilder.Entity("StoryWalker.Domain.Entities.Page", b =>
                 {
                     b.Property<Guid>("Id")
@@ -229,6 +287,17 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                     b.Navigation("Page");
                 });
 
+            modelBuilder.Entity("StoryWalker.Domain.Entities.ConversationMessage", b =>
+                {
+                    b.HasOne("StoryWalker.Domain.Entities.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("StoryWalker.Domain.Entities.Page", b =>
                 {
                     b.HasOne("StoryWalker.Domain.Entities.Story", "Story")
@@ -261,6 +330,11 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("StoryWalker.Domain.Entities.Character", b =>
                 {
                     b.Navigation("CharacterPages");
+                });
+
+            modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Page", b =>
