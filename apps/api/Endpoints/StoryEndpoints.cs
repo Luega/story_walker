@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using StoryWalker.Application.Agent;
 using StoryWalker.Application.Api;
 using StoryWalker.Domain.Entities;
 using StoryWalker.Infrastructure.Persistence;
@@ -34,6 +35,48 @@ public static class StoryEndpoints
     public static IEndpointRouteBuilder MapStoryEndpoints(this IEndpointRouteBuilder app)
     {
         var stories = app.MapGroup("/stories").WithTags("Stories");
+
+        stories
+            .MapPost(
+                "/conversations",
+                async (AgentMessageRequest request, IStoryAgent agent, CancellationToken ct) =>
+                {
+                    if (string.IsNullOrWhiteSpace(request.Message))
+                    {
+                        return Results.ValidationProblem(
+                            new Dictionary<string, string[]>
+                            {
+                                ["message"] = ["Message is required."],
+                            }
+                        );
+                    }
+
+                    // ConversationId is null on the first turn; the agent issues one and we echo it
+                    // back so the client can continue the conversation. An unknown id (e.g. after a
+                    // conversation was purged) is a 404 so the client starts a fresh conversation.
+                    try
+                    {
+                        var turn = await agent.SendAsync(
+                            request.ConversationId,
+                            request.Message.Trim(),
+                            ct
+                        );
+
+                        return Results.Ok(
+                            new AgentMessageResponse(
+                                turn.ConversationId,
+                                turn.Reply,
+                                turn.BriefReady
+                            )
+                        );
+                    }
+                    catch (ConversationNotFoundException)
+                    {
+                        return Results.NotFound();
+                    }
+                }
+            )
+            .WithName("SendAgentMessage");
 
         stories
             .MapGet(
