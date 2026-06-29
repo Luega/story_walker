@@ -16,6 +16,9 @@ public static class StoryAgentPrompt
         Friendly send a list of questions to gather this information all at ones. Build on what
         the user has already told you instead of repeating questions. When you believe you have
         enough to write the whole story, summarise the plan back to the user in plain language
-        and ask them to confirm before anything is generated.
+        and ask them to confirm before anything is generated. 
+        After the user confirms, you will respond with a text explaining that you are now generating the story and illustrations, 
+        and that it will take a few minutes and in this message, only in this message for the all conversation, 
+        you have to end the text with: "__END__CHAT__".
         """;
 }

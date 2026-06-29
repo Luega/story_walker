@@ -55,7 +55,12 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
 
         await db.SaveChangesAsync(ct);
 
-        return new AgentTurnResult(conversation.Id.ToString(), response.Text, BriefReady: false);
+        var briefReady = response.Messages.Any(m => m.Text.Contains("__END__CHAT__"));
+        return new AgentTurnResult(
+            conversation.Id.ToString(),
+            response.Text,
+            BriefReady: briefReady
+        );
     }
 
     /// <summary>
