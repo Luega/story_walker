@@ -83,6 +83,69 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     }
 
     [Fact]
+    public async Task End_chat_sentinel_completes_the_conversation()
+    {
+        await _factory.ResetAsync();
+
+        string id = null!;
+        AgentTurnResult turn = null!;
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient { Reply = "Here is your brief. __END__CHAT__" });
+            turn = await agent.SendAsync(conversationId: null, "wrap it up", Ct);
+            id = turn.ConversationId;
+        });
+
+        Assert.True(turn.BriefReady);
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var conversation = await db.Conversations.SingleAsync(c => c.Id == Guid.Parse(id), Ct);
+            Assert.Equal(ConversationStatus.Completed, conversation.Status);
+        });
+    }
+
+    [Fact]
+    public async Task Turn_on_completed_conversation_returns_already_completed_without_appending()
+    {
+        await _factory.ResetAsync();
+
+        string id = null!;
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient { Reply = "Here is your brief. __END__CHAT__" });
+            var turn = await agent.SendAsync(conversationId: null, "wrap it up", Ct);
+            id = turn.ConversationId;
+        });
+
+        AgentTurnResult turn = null!;
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient { Reply = "should not be called" });
+            turn = await agent.SendAsync(id, "anything else?", Ct);
+        });
+
+        Assert.Equal(id, turn.ConversationId);
+        Assert.True(turn.BriefReady);
+        Assert.Equal(
+            "The conversation has already completed. Wait for the story generation to finish, or start a new conversation.",
+            turn.Reply
+        );
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var conversation = await db
+                .Conversations.Include(c => c.Messages)
+                .SingleAsync(c => c.Id == Guid.Parse(id), Ct);
+
+            // The early return must not append the new user turn nor change the completed status.
+            Assert.Equal(ConversationStatus.Completed, conversation.Status);
+            // system, user("wrap it up"), assistant — the second turn was rejected before appending.
+            Assert.Equal(3, conversation.Messages.Count);
+        });
+    }
+
+    [Fact]
     public async Task Unknown_conversation_id_throws_not_found()
     {
         await _factory.ResetAsync();

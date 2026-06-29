@@ -36,6 +36,14 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         else
         {
             conversation = await LoadConversationAsync(conversationId, ct);
+            if (conversation.Status == ConversationStatus.Completed)
+            {
+                return new AgentTurnResult(
+                    conversation.Id.ToString(),
+                    "The conversation has already completed. Wait for the story generation to finish, or start a new conversation.",
+                    BriefReady: true
+                );
+            }
         }
 
         Append(conversation, MessageRole.User, message);
@@ -53,9 +61,11 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
             Append(conversation, ToMessageRole(reply.Role), reply.Text);
         }
 
+        var briefReady = response.Messages.Any(m => m.Text.Contains("__END__CHAT__"));
+        conversation.Status = briefReady ? ConversationStatus.Completed : ConversationStatus.Active;
+
         await db.SaveChangesAsync(ct);
 
-        var briefReady = response.Messages.Any(m => m.Text.Contains("__END__CHAT__"));
         return new AgentTurnResult(
             conversation.Id.ToString(),
             response.Text,
