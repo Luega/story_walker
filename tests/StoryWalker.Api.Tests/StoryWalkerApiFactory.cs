@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Respawn;
+using StoryWalker.Application.Agent;
 using StoryWalker.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 
@@ -31,6 +33,13 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
         // via the ConnectionStrings__Postgres environment variable (set in InitializeAsync), which
         // CreateBuilder reads before builder.Build() — the same mechanism docker-compose uses.
         builder.UseEnvironment("Testing");
+
+        // Pin the lazy Ollama backend so Program's Foundry-config guard doesn't trip in Testing, then
+        // replace the agent with a fake — the real IChatClient is never resolved, so nothing connects.
+        builder.UseSetting("Agent:Provider", "Ollama");
+        builder.ConfigureTestServices(services =>
+            services.AddSingleton<IStoryAgent>(new FakeStoryAgent())
+        );
     }
 
     /// <summary>Runs an action against a fresh scoped <see cref="StoryWalkerDbContext"/>.</summary>
