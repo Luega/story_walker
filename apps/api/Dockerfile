@@ -6,7 +6,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 
 # Copy only the project files first and restore — this layer is cached until a .csproj changes,
-# so source-only edits skip the (slow) NuGet restore on rebuild.
+# so source-only edits skip the (slow) NuGet restore on rebuild. Directory.Packages.props carries
+# the centrally-managed package versions (ADR-0016), so restore needs it.
+COPY Directory.Packages.props                                          ./
 COPY apps/api/StoryWalker.Api.csproj                                   apps/api/
 COPY src/StoryWalker.Domain/StoryWalker.Domain.csproj                 src/StoryWalker.Domain/
 COPY src/StoryWalker.Application/StoryWalker.Application.csproj        src/StoryWalker.Application/

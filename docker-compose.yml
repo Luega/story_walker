@@ -16,6 +16,31 @@ services:
       timeout: 5s
       retries: 5
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: storywalker-ollama
+    ports:
+      - "11434:11434"                 # same port as a local `ollama serve`, for host access
+    volumes:
+      - ollama-data:/root/.ollama     # persist pulled models across restarts
+    healthcheck:
+      test: ["CMD", "ollama", "list"] # the CLI talks to the server, so this proves it's up
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # CPU-only by default. For NVIDIA GPUs, add a deploy.resources.reservations.devices block.
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: storywalker-ollama-pull
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"   # pull against the server so the model lands in its volume
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-llama3.2}"]
+    restart: "no"                          # one-shot: pulls the model, then exits
+    depends_on:
+      ollama:
+        condition: service_healthy
+
   api:
     build:
       context: .                      # monorepo root, so the Dockerfile can reach src/
@@ -26,11 +51,18 @@ services:
       # Inside the compose network the DB is reached by service name, not localhost.
       # This env var overrides ConnectionStrings:Postgres from appsettings.
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker"
+      # The agent backend: Ollama is reached by service name, not localhost. Overrides
+      # Agent:Provider / Ollama:* from appsettings.
+      Agent__Provider: "Ollama"
+      Ollama__Endpoint: "http://ollama:11434"
+      Ollama__Model: "${OLLAMA_MODEL:-llama3.2}"
     ports:
       - "5080:8080"                   # host 5080 -> container 8080
     depends_on:
       postgres:
         condition: service_healthy    # wait for the DB before migrating/seeding on startup
+      ollama-pull:
+        condition: service_completed_successfully  # model is pulled before the API serves traffic
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -53,3 +85,4 @@ services:
 volumes:
   postgres-data:
   pgadmin-data:
+  ollama-data:
