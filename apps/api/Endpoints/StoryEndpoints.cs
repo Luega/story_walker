@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using StoryWalker.Application.Agent;
 using StoryWalker.Application.Api;
+using StoryWalker.Application.Brief;
 using StoryWalker.Domain.Entities;
 using StoryWalker.Infrastructure.Persistence;
 
@@ -66,13 +67,23 @@ public static class StoryEndpoints
                             new AgentMessageResponse(
                                 turn.ConversationId,
                                 turn.Reply,
-                                turn.BriefReady
+                                turn.BriefReady,
+                                turn.Brief
                             )
                         );
                     }
                     catch (ConversationNotFoundException)
                     {
                         return Results.NotFound();
+                    }
+                    catch (BriefValidationException ex)
+                    {
+                        // The agent confirmed but produced an unusable brief; the turn was rolled
+                        // back, so the client can resend the confirmation to author again.
+                        return Results.Problem(
+                            detail: ex.Message,
+                            statusCode: StatusCodes.Status502BadGateway
+                        );
                     }
                 }
             )
