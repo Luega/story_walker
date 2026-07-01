@@ -1,3 +1,5 @@
+using StoryWalker.Application.Brief;
+
 namespace StoryWalker.Application.Agent;
 
 /// <summary>
@@ -14,13 +16,17 @@ public interface IStoryAgent
     Task<AgentTurnResult> SendAsync(
         string? conversationId,
         string message,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 }
 
 /// <param name="ConversationId">Server-generated id the client round-trips to continue the conversation.</param>
 /// <param name="Reply">The agent's reply text for this turn.</param>
-/// <param name="BriefReady">True once the agent has emitted a complete generation brief (ADR-0013). Always false for now.</param>
+/// <param name="BriefReady">True once the agent has emitted a complete generation brief (ADR-0013).</param>
+/// <param name="Brief">The authored, validated brief on the final turn; null on every earlier turn.</param>
 public record AgentTurnResult(
     string ConversationId,
     string Reply,
-    bool BriefReady);
+    bool BriefReady,
+    GenerationBrief? Brief = null
+);

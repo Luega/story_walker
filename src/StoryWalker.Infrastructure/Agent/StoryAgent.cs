@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using StoryWalker.Application.Agent;
+using StoryWalker.Application.Brief;
 using StoryWalker.Domain.Entities;
 using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Persistence;
@@ -64,14 +65,85 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         var briefReady = response.Messages.Any(m => m.Text.Contains("__END__CHAT__"));
         conversation.Status = briefReady ? ConversationStatus.Completed : ConversationStatus.Active;
 
+        // Author the brief in the same turn the user confirms, so BriefReady and the brief arrive
+        // together. A validation failure throws before SaveChanges, rolling back the turn so the
+        // client can resend the confirmation and author again (ADR-0013).
+        var brief = briefReady ? await AuthorBriefAsync(conversation, ct) : null;
+
         await db.SaveChangesAsync(ct);
 
         return new AgentTurnResult(
             conversation.Id.ToString(),
             response.Text,
-            BriefReady: briefReady
+            BriefReady: briefReady,
+            Brief: brief
         );
     }
+
+    /// <summary>
+    /// Second, structured-output pass (ADR-0013): re-reads the confirmed conversation and authors
+    /// the complete <see cref="GenerationBrief"/> as schema-shaped JSON. Character reuse is deferred
+    /// until pgvector lands (ADR-0009), so every character is authored as new
+    /// (<c>existingCharacterId</c>/<c>basedOnStoryId</c> forced null). Retries once on invalid
+    /// output before giving up.
+    /// </summary>
+    private async Task<GenerationBrief> AuthorBriefAsync(
+        Conversation conversation,
+        CancellationToken ct
+    )
+    {
+        // Drop the interview system prompt and lead with the authoring one; the confirmed
+        // interview transcript becomes the context the author works from.
+        var messages = new List<ChatMessage>
+        {
+            new(ChatRole.System, StoryAgentPrompt.BriefAuthoringInstructions),
+        };
+        messages.AddRange(
+            conversation
+                .Messages.Where(m => m.Role != MessageRole.System)
+                .OrderBy(m => m.Seq)
+                .Select(m => new ChatMessage(ToChatRole(m.Role), m.Content))
+        );
+        messages.Add(
+            new ChatMessage(ChatRole.User, "Output the generation brief for the confirmed plan.")
+        );
+
+        IReadOnlyList<string> errors = [];
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var response = await chatClient.GetResponseAsync<GenerationBrief>(
+                messages,
+                cancellationToken: ct
+            );
+
+            if (response.TryGetResult(out var brief))
+            {
+                brief = ForceNewCharacters(brief);
+                errors = GenerationBriefValidator.Validate(brief);
+                if (errors.Count == 0)
+                {
+                    return brief;
+                }
+            }
+            else
+            {
+                errors = ["The model did not return a parseable generation brief."];
+            }
+        }
+
+        throw new BriefValidationException(errors);
+    }
+
+    /// <summary>Reuse is deferred (ADR-0009), so blank out the reuse links the model may have set.</summary>
+    private static GenerationBrief ForceNewCharacters(GenerationBrief brief) =>
+        brief with
+        {
+            Story = brief.Story with { BasedOnStoryId = null },
+            Characters =
+            [
+                .. brief.Characters.Select(c => c with { ExistingCharacterId = null }),
+            ],
+        };
 
     /// <summary>
     /// Appends a message to the conversation graph and tracks it as inserted. Adding to the DbSet
