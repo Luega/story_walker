@@ -46,7 +46,10 @@ public static class DependencyInjection
 
     /// <summary>
     /// Wires the story agent onto a local Ollama server. The <see cref="IChatClient"/> is built
-    /// lazily, so nothing connects until the first conversation turn.
+    /// lazily, so nothing connects until the first conversation turn. The backing
+    /// <see cref="HttpClient"/> gets a generous timeout: CPU-only inference of the structured brief
+    /// (plus first-request model load) routinely exceeds HttpClient's 100s default; cancellation is
+    /// still honoured through the per-turn <see cref="CancellationToken"/>.
     /// </summary>
     public static IServiceCollection AddOllamaChat(
         this IServiceCollection services,
@@ -54,7 +57,15 @@ public static class DependencyInjection
         string model
     )
     {
-        services.AddSingleton<IChatClient>(_ => new OllamaApiClient(new Uri(endpoint), model));
+        services.AddSingleton<IChatClient>(_ =>
+        {
+            var http = new HttpClient
+            {
+                BaseAddress = new Uri(endpoint),
+                Timeout = TimeSpan.FromMinutes(10),
+            };
+            return new OllamaApiClient(http, model);
+        });
 
         return services.AddStoryAgentCore();
     }
