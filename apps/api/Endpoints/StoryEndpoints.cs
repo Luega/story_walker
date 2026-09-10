@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using StoryWalker.Application.Agent;
 using StoryWalker.Application.Api;
 using StoryWalker.Application.Brief;
+using StoryWalker.Application.Messaging;
 using StoryWalker.Domain.Entities;
+using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Api.Endpoints;
@@ -40,7 +42,13 @@ public static class StoryEndpoints
         stories
             .MapPost(
                 "/conversations",
-                async (AgentMessageRequest request, IStoryAgent agent, CancellationToken ct) =>
+                async (
+                    AgentMessageRequest request,
+                    IStoryAgent agent,
+                    StoryWalkerDbContext db,
+                    IBriefPublisher publisher,
+                    CancellationToken ct
+                ) =>
                 {
                     if (string.IsNullOrWhiteSpace(request.Message))
                     {
@@ -63,12 +71,23 @@ public static class StoryEndpoints
                             ct
                         );
 
+                        // Brief authored: persist the story (status=Generating) and enqueue the brief
+                        // for the generation worker, then return 202 (ADR-0003). Otherwise it's an
+                        // ordinary conversational turn — echo the reply with 200.
+                        if (turn is { BriefReady: true, Brief: not null })
+                        {
+                            var story = await StartGenerationAsync(db, publisher, turn.Brief, ct);
+                            return Results.Accepted(
+                                $"/stories/{story.Id}",
+                                new StoryQueuedResponse(story.Id, story.Status.ToString())
+                            );
+                        }
+
                         return Results.Ok(
                             new AgentMessageResponse(
                                 turn.ConversationId,
                                 turn.Reply,
-                                turn.BriefReady,
-                                turn.Brief
+                                turn.BriefReady
                             )
                         );
                     }
@@ -188,5 +207,50 @@ public static class StoryEndpoints
             .WithName("DeleteStory");
 
         return app;
+    }
+
+    /// <summary>
+    /// Persists a <see cref="Story"/> in <see cref="StoryStatus.Generating"/> from the authored brief
+    /// and enqueues that brief for the generation worker (ADR-0003). Only the story row is created
+    /// here; the worker's <c>PersistBrief</c> activity writes the pages and characters.
+    /// </summary>
+    private static async Task<Story> StartGenerationAsync(
+        StoryWalkerDbContext db,
+        IBriefPublisher publisher,
+        GenerationBrief brief,
+        CancellationToken ct
+    )
+    {
+        // Ownership: until Clerk auth lands (ADR-0002) there is no current user, so the story is
+        // owned by the single seeded user. Fails fast if the database has no user at all.
+        var userId = await db.Users.Select(u => u.Id).FirstOrDefaultAsync(ct);
+        if (userId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "Cannot start generation: no user exists to own the story."
+            );
+        }
+
+        var story = new Story
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Title = brief.Story.Title,
+            // The brief carries no summary yet (ADR-0013); EmbedStory will need one later.
+            Summary = string.Empty,
+            Status = StoryStatus.Generating,
+            ArtStyle = brief.ArtStyle,
+            Palette = brief.Palette,
+        };
+
+        db.Stories.Add(story);
+        await db.SaveChangesAsync(ct);
+
+        // Dual-write: the story is committed before the enqueue. A transactional outbox would make
+        // this atomic (deferred); if the publish throws, the request fails and the story is left in
+        // Generating for a later retry/cleanup.
+        await publisher.PublishAsync(story.Id, brief, ct);
+
+        return story;
     }
 }

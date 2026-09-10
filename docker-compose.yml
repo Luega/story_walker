@@ -16,53 +16,43 @@ services:
       timeout: 5s
       retries: 5
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: storywalker-ollama
-    ports:
-      - "11434:11434"                 # same port as a local `ollama serve`, for host access
-    volumes:
-      - ollama-data:/root/.ollama     # persist pulled models across restarts
-    healthcheck:
-      test: ["CMD", "ollama", "list"] # the CLI talks to the server, so this proves it's up
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    # CPU-only by default. For NVIDIA GPUs, add a deploy.resources.reservations.devices block.
-
-  ollama-pull:
-    image: ollama/ollama:latest
-    container_name: storywalker-ollama-pull
-    environment:
-      OLLAMA_HOST: "http://ollama:11434"   # pull against the server so the model lands in its volume
-    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-llama3.2}"]
-    restart: "no"                          # one-shot: pulls the model, then exits
-    depends_on:
-      ollama:
-        condition: service_healthy
-
+  # The API. Behind the "api" profile, mirroring the `functions` worker below: a plain
+  # `docker compose up` starts the infrastructure only, and you run the API from the host
+  # (`dotnet run --project apps/api`) where DefaultAzureCredential picks up your `az login` and
+  # appsettings.Development.json already points at localhost for Postgres/Service Bus.
+  # `docker compose --profile api up` runs it in-container instead — that path has no `az login`
+  # to reuse (no `az` binary, non-root user), so it authenticates with the Foundry deployment key
+  # from .env (see .env.example).
   api:
     build:
       context: .                      # monorepo root, so the Dockerfile can reach src/
       dockerfile: apps/api/Dockerfile
     container_name: storywalker-api
+    profiles:
+      - api
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       # Inside the compose network the DB is reached by service name, not localhost.
       # This env var overrides ConnectionStrings:Postgres from appsettings.
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker"
-      # The agent backend: Ollama is reached by service name, not localhost. Overrides
-      # Agent:Provider / Ollama:* from appsettings.
-      Agent__Provider: "Ollama"
-      Ollama__Endpoint: "http://ollama:11434"
-      Ollama__Model: "${OLLAMA_MODEL:-llama3.2}"
+      # The agent backend: the Foundry chat deployment (ADR-0011). Foundry is a cloud endpoint, so
+      # there is nothing to run on the compose network — only configuration. Overrides Foundry:*
+      # from appsettings.
+      Foundry__Endpoint: "${FOUNDRY_ENDPOINT:-}"
+      Foundry__Deployment: "${FOUNDRY_DEPLOYMENT:-}"
+      # The deployment key. Only this in-container path needs it: from the host the API borrows your
+      # `az login`, and in Azure it will use a managed identity — neither stores a secret anywhere.
+      Foundry__ApiKey: "${FOUNDRY_API_KEY:-}"
+      # Publishes the authored brief to the Service Bus emulator (reached by service name). The
+      # SharedAccessKey is the literal emulator placeholder; UseDevelopmentEmulator=true selects it.
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
     ports:
       - "5080:8080"                   # host 5080 -> container 8080
     depends_on:
       postgres:
         condition: service_healthy    # wait for the DB before migrating/seeding on startup
-      ollama-pull:
-        condition: service_completed_successfully  # model is pulled before the API serves traffic
+      servicebus-emulator:
+        condition: service_started    # only publishes mid-conversation, so start ordering is enough
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -82,7 +72,67 @@ services:
       postgres:
         condition: service_healthy
 
+  # SQL Server backing store required by the Service Bus emulator (its only supported dependency).
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: storywalker-mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-StoryWalker!Local1}"
+
+  # Local Azure Service Bus (ADR-0003). Entities can't be created at runtime, so the ingestion queue
+  # is declared up-front in docker/servicebus/Config.json. Port 5672 = AMQP, 5300 = management/health.
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    container_name: storywalker-servicebus
+    volumes:
+      - ./docker/servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+    ports:
+      - "5672:5672"                   # AMQP, for the API/worker when run locally against the emulator
+      - "5300:5300"                   # management + /health endpoint
+    environment:
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: mssql               # reached by service name on the compose network
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-StoryWalker!Local1}"
+    depends_on:
+      - mssql
+
+  # Azure Storage emulator: backs the Functions host runtime + the Durable Functions task hub.
+  # --skipApiVersionCheck: the Durable Task storage SDK sends a newer Storage API version than this
+  # Azurite build whitelists; without the flag every blob/queue/table call 400s and the Durable
+  # listeners never start.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: storywalker-azurite
+    command: azurite --skipApiVersionCheck --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    ports:
+      - "10000:10000"                 # blob
+      - "10001:10001"                 # queue
+      - "10002:10002"                 # table
+
+  # Durable Functions generation worker (ADR-0004). Behind the "worker" profile: `docker compose up`
+  # leaves it off so you can run/debug the worker locally against the emulator without two consumers
+  # fighting over the queue; `docker compose --profile worker up` runs it fully in-container.
+  functions:
+    build:
+      context: .                      # monorepo root, so the Dockerfile can reach src/
+      dockerfile: apps/functions/Dockerfile
+    container_name: storywalker-functions
+    environment:
+      FUNCTIONS_WORKER_RUNTIME: dotnet-isolated
+      # Durable's DurableClient binding builds its HTTP management URLs from WEBSITE_HOSTNAME. Azure
+      # sets it automatically; in a plain container we must, or the binding throws on every trigger.
+      WEBSITE_HOSTNAME: "localhost:80"
+      # Azurite is on a different host than localhost here, so the full connection string form is
+      # required (UseDevelopmentStorage=true only resolves to 127.0.0.1).
+      AzureWebJobsStorage: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
+      ServiceBusConnection: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+    depends_on:
+      - servicebus-emulator
+      - azurite
+    profiles:
+      - worker
+
 volumes:
   postgres-data:
   pgadmin-data:
-  ollama-data:

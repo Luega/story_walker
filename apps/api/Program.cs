@@ -10,29 +10,37 @@ builder.Services.AddInfrastructure(
         ?? throw new InvalidOperationException("Connection string 'Postgres' is not configured.")
 );
 
-// Story agent backend: local Ollama by default in Development, Foundry elsewhere. Both expose the
-// same IChatClient, so the agent logic is identical — only the registered client differs.
-var configuredProvider = builder.Configuration["Agent:Provider"];
-var agentProvider = string.IsNullOrWhiteSpace(configuredProvider)
-    ? (builder.Environment.IsDevelopment() ? "Ollama" : "Foundry")
-    : configuredProvider;
+// Publishes the authored brief onto the Service Bus ingestion queue when a conversation completes
+// (ADR-0003). Locally this points at the Service Bus emulator; in the cloud, the namespace.
+builder.Services.AddServiceBusPublishing(
+    builder.Configuration["ServiceBus:ConnectionString"]
+        ?? throw new InvalidOperationException("'ServiceBus:ConnectionString' is not configured.")
+);
 
-if (string.Equals(agentProvider, "Ollama", StringComparison.OrdinalIgnoreCase))
+// Story agent backend: a Foundry chat-model deployment (ADR-0011), in every environment. Blank
+// counts as unconfigured, not just null: docker-compose always defines these variables, so an unset
+// one arrives as "" and would otherwise shadow the appsettings value and fail later, obscurely.
+var foundryEndpoint = builder.Configuration["Foundry:Endpoint"];
+var foundryDeployment = builder.Configuration["Foundry:Deployment"];
+
+if (string.IsNullOrWhiteSpace(foundryEndpoint))
 {
-    builder.Services.AddOllamaChat(
-        builder.Configuration["Ollama:Endpoint"] ?? "http://localhost:11434",
-        builder.Configuration["Ollama:Model"] ?? "llama3.1"
-    );
+    throw new InvalidOperationException("'Foundry:Endpoint' is not configured.");
 }
-else
+
+if (string.IsNullOrWhiteSpace(foundryDeployment))
 {
-    builder.Services.AddFoundryChat(
-        builder.Configuration["Foundry:Endpoint"]
-            ?? throw new InvalidOperationException("'Foundry:Endpoint' is not configured."),
-        builder.Configuration["Foundry:Deployment"]
-            ?? throw new InvalidOperationException("'Foundry:Deployment' is not configured.")
-    );
+    throw new InvalidOperationException("'Foundry:Deployment' is not configured.");
 }
+
+// The key is optional. Supplied (the container path), it authenticates on its own; omitted, the
+// agent falls back to DefaultAzureCredential — your `az login` on a workstation, the app's managed
+// identity once hosted in Azure.
+builder.Services.AddFoundryChat(
+    foundryEndpoint,
+    foundryDeployment,
+    builder.Configuration["Foundry:ApiKey"]
+);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

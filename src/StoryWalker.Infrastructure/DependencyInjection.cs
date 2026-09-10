@@ -1,11 +1,14 @@
+using Azure;
 using Azure.AI.OpenAI;
 using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using OllamaSharp;
 using StoryWalker.Application.Agent;
+using StoryWalker.Application.Messaging;
 using StoryWalker.Infrastructure.Agent;
+using StoryWalker.Infrastructure.Messaging;
 using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Infrastructure;
@@ -32,60 +35,55 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Registers the <see cref="IStoryAgent"/>. Callers first register an <see cref="IChatClient"/>
-    /// backend (<see cref="AddOllamaChat"/> or <see cref="AddFoundryChat"/>); the agent is
-    /// provider-agnostic over it. Scoped, because it persists history through the (scoped)
-    /// <see cref="StoryWalkerDbContext"/> (ADR-0018).
+    /// Registers the Service Bus <see cref="IBriefPublisher"/> used by the API to enqueue a validated
+    /// brief (ADR-0003). The connection string is passed in by the host (read from its configuration),
+    /// keeping Infrastructure free of configuration coupling — same convention as
+    /// <see cref="AddInfrastructure"/>. The <see cref="ServiceBusClient"/> is a singleton so its
+    /// connection is pooled across requests.
     /// </summary>
-    private static IServiceCollection AddStoryAgentCore(this IServiceCollection services)
+    public static IServiceCollection AddServiceBusPublishing(
+        this IServiceCollection services,
+        string connectionString
+    )
     {
-        services.AddScoped<IStoryAgent, StoryAgent>();
+        services.AddSingleton(_ => new ServiceBusClient(connectionString));
+        services.AddSingleton<IBriefPublisher, ServiceBusBriefPublisher>();
 
         return services;
     }
 
     /// <summary>
-    /// Wires the story agent onto a local Ollama server. The <see cref="IChatClient"/> is built
-    /// lazily, so nothing connects until the first conversation turn. The backing
-    /// <see cref="HttpClient"/> gets a generous timeout: CPU-only inference of the structured brief
-    /// (plus first-request model load) routinely exceeds HttpClient's 100s default; cancellation is
-    /// still honoured through the per-turn <see cref="CancellationToken"/>.
-    /// </summary>
-    public static IServiceCollection AddOllamaChat(
-        this IServiceCollection services,
-        string endpoint,
-        string model
-    )
-    {
-        services.AddSingleton<IChatClient>(_ =>
-        {
-            var http = new HttpClient
-            {
-                BaseAddress = new Uri(endpoint),
-                Timeout = TimeSpan.FromMinutes(10),
-            };
-            return new OllamaApiClient(http, model);
-        });
-
-        return services.AddStoryAgentCore();
-    }
-
-    /// <summary>
-    /// Wires the story agent onto a Microsoft Foundry chat-model deployment (ADR-0011), reached via
-    /// the Azure OpenAI client with <see cref="DefaultAzureCredential"/>. Built lazily.
+    /// Wires the <see cref="IStoryAgent"/> onto a Microsoft Foundry chat-model deployment
+    /// (ADR-0011), reached through the Azure OpenAI client.
+    /// <para>
+    /// Authentication follows <paramref name="apiKey"/>: when supplied, the deployment key is used
+    /// directly — the simple path for a container, which has no signed-in user to borrow an identity
+    /// from. When omitted, <see cref="DefaultAzureCredential"/> resolves an identity instead: the
+    /// developer's <c>az login</c> when running on a workstation, the app's managed identity once
+    /// hosted in Azure. Identity is preferred where available, since it leaves no long-lived secret
+    /// to store, rotate or leak.
+    /// </para>
+    /// The <see cref="IChatClient"/> is built lazily, so nothing authenticates or connects until the
+    /// first conversation turn. The agent itself is scoped, because it persists history through the
+    /// (scoped) <see cref="StoryWalkerDbContext"/> (ADR-0018).
     /// </summary>
     public static IServiceCollection AddFoundryChat(
         this IServiceCollection services,
         string endpoint,
-        string deployment
+        string deployment,
+        string? apiKey = null
     )
     {
         services.AddSingleton<IChatClient>(_ =>
-            new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
-                .GetChatClient(deployment)
-                .AsIChatClient()
-        );
+        {
+            var client = string.IsNullOrWhiteSpace(apiKey)
+                ? new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
+                : new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
 
-        return services.AddStoryAgentCore();
+            return client.GetChatClient(deployment).AsIChatClient();
+        });
+        services.AddScoped<IStoryAgent, StoryAgent>();
+
+        return services;
     }
 }

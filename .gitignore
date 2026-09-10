@@ -62,7 +62,13 @@ obj
 # ASP.NET local secrets / env
 *.dev.env
 .env
+!.env.example
 secrets.json
+# Only the committed base file is tracked. Every environment/local variant (appsettings.
+# Development.json, appsettings.*.local.json, ...) may carry endpoints, connection strings and
+# credentials, so it stays out of the repo — the container gets its config from env vars instead.
+appsettings.*.json
+!appsettings.json
 
 # OS
 .DS_Store

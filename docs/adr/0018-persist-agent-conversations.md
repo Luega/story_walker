@@ -4,6 +4,19 @@
 - **Date:** 2026-06-27
 - **Deciders:** Luca Martinelli
 
+> **Note (2026-09-10):** the local Ollama backend mentioned in *Context* below is gone. `StoryAgent`
+> now runs against a Foundry chat-model deployment in every environment ([ADR-0011](0011-microsoft-foundry-agent-and-generation.md)),
+> including local development and `docker compose`; the `Agent:Provider` switch, `AddOllamaChat` and
+> the `OllamaSharp` dependency have been removed. The reason is fidelity: the small models that run
+> on a dev machine are not representative of the ones that will author the generation brief
+> ([ADR-0013](0013-agent-authored-generation-brief.md)), so local runs were exercising the plumbing
+> rather than the product. Testing against the real, more capable models is what tells us whether
+> the agent actually holds a coherent interview and emits a schema-valid brief. The trade-off
+> accepted: no offline development, every local turn costs inference and needs Azure credentials
+> (a service principal in `.env` for the container — `DefaultAzureCredential` cannot reuse the
+> host's `az login` from inside it). Nothing in the decision below changes: conversation history is
+> persisted regardless of which chat backend is registered.
+
 ## Context
 
 The conversational agent ([ADR-0011](0011-microsoft-foundry-agent-and-generation.md)) runs in the

@@ -10,6 +10,13 @@
 docs
 iac
 apps/ui
-apps/functions
 **/*.user
 **/appsettings.*.local.json
+# Same for the per-environment appsettings: they hold workstation values and secrets (the Foundry
+# key among them), and a copied file stays readable in an image layer. Only appsettings.json ships;
+# the container is configured through env vars from docker-compose.
+**/appsettings.Development.json
+# Local Functions dev settings never belong in an image (container config comes from env).
+**/local.settings.json
+# The .env holding those secrets is never part of the build context either.
+.env
