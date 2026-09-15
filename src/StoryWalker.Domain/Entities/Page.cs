@@ -24,7 +24,4 @@ public class Page : EntityBase
     public PageStatus Status { get; set; }
 
     public Story Story { get; set; } = null!;
-
-    /// <summary>Which characters appear on this page (populates CHARACTER_PAGE).</summary>
-    public ICollection<CharacterPage> CharacterPages { get; set; } = [];
 }

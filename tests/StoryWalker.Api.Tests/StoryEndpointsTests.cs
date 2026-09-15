@@ -41,7 +41,7 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     }
 
     [Fact]
-    public async Task GetStory_returns_full_story_with_pages_and_characters()
+    public async Task GetStory_returns_full_story_with_pages()
     {
         await _factory.ResetAsync();
         var storyId = await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
@@ -50,12 +50,9 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
 
         Assert.NotNull(story);
         Assert.Equal(storyId, story.Id);
-        // Three pages, returned in page-number order.
-        Assert.Equal([1, 2, 3], story.Pages.Select(p => p.PageNo).ToArray());
-        // Luna appears on every page, Pip on two — distinct set is the two characters.
-        Assert.Equal(2, story.Characters.Count);
-        Assert.Contains(story.Characters, c => c.Name == "Luna");
-        Assert.Contains(story.Characters, c => c.Name == "Pip");
+        // Six pages, returned in page-number order.
+        Assert.Equal([1, 2, 3, 4, 5, 6], story.Pages.Select(p => p.PageNo).ToArray());
+        Assert.Equal(5, story.TargetAge);
     }
 
     [Fact]
@@ -122,7 +119,7 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     }
 
     [Fact]
-    public async Task DeleteStory_removes_story_and_cascades_but_keeps_characters_and_user()
+    public async Task DeleteStory_removes_story_and_cascades_pages_but_keeps_the_user()
     {
         await _factory.ResetAsync();
         var storyId = await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
@@ -134,9 +131,7 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
         {
             Assert.Equal(0, await db.Stories.CountAsync(Ct));
             Assert.Equal(0, await db.Pages.CountAsync(Ct));
-            Assert.Equal(0, await db.CharacterPages.CountAsync(Ct));
-            // User-owned data survives the story deletion.
-            Assert.Equal(2, await db.Characters.CountAsync(Ct));
+            // The owning user survives the story deletion.
             Assert.Equal(1, await db.Users.CountAsync(Ct));
         });
     }
@@ -149,21 +144,5 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
         var response = await _client.DeleteAsync($"/stories/{Guid.NewGuid()}", Ct);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task DeleteStory_reused_by_another_story_returns_409()
-    {
-        await _factory.ResetAsync();
-        var (baseStoryId, _) = await _factory.ExecuteDbAsync(SeedData.SeedBasedOnPairAsync);
-
-        var response = await _client.DeleteAsync($"/stories/{baseStoryId}", Ct);
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        // The protected story is still there.
-        var stillExists = await _factory.ExecuteDbAsync(db =>
-            db.Stories.AnyAsync(s => s.Id == baseStoryId, Ct)
-        );
-        Assert.True(stillExists);
     }
 }

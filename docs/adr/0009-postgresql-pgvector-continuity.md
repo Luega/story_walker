@@ -1,8 +1,11 @@
 # ADR 0009 — PostgreSQL + pgvector for story continuity and reuse
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0019](0019-mvp-scope-reduction.md)
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
+
+
+> **Superseded (2026-09-15) by [ADR-0019](0019-mvp-scope-reduction.md).** Stories are self-contained in the MVP: no reuse, no discovery, no embeddings.
 
 ## Context
 

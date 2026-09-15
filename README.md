@@ -54,12 +54,12 @@ story_walker/                       # monorepo root
 - [0001 — Next.js front-end + ASP.NET Core API split](docs/adr/0001-nextjs-aspnetcore-split.md)
 - [0002 — Clerk for authentication](docs/adr/0002-clerk-for-authentication.md)
 - [0003 — Asynchronous generation via Azure Service Bus](docs/adr/0003-async-generation-via-service-bus.md)
-- [0004 — Durable Functions for the generation pipeline](docs/adr/0004-durable-functions-for-generation.md)
+- [0004 — Durable Functions for the generation pipeline](docs/adr/0004-durable-functions-for-generation.md) *(superseded by 0020)*
 - [0005 — Idempotency and failure handling in the generation pipeline](docs/adr/0005-idempotency-and-failure-handling.md)
 - [0006 — Azure SignalR for realtime progress](docs/adr/0006-azure-signalr-for-realtime.md)
 - [0007 — Single-pass text generation for narrative coherence](docs/adr/0007-single-pass-text-generation.md)
-- [0008 — Per-character reference images for visual consistency](docs/adr/0008-per-character-reference-images.md)
-- [0009 — PostgreSQL + pgvector for story continuity and reuse](docs/adr/0009-postgresql-pgvector-continuity.md)
+- [0008 — Per-character reference images for visual consistency](docs/adr/0008-per-character-reference-images.md) *(superseded by 0019)*
+- [0009 — PostgreSQL + pgvector for story continuity and reuse](docs/adr/0009-postgresql-pgvector-continuity.md) *(superseded by 0019)*
 - [0010 — Azure Blob Storage for generated images](docs/adr/0010-azure-blob-storage-for-images.md)
 - [0011 — Microsoft Foundry for the agent and generation](docs/adr/0011-microsoft-foundry-agent-and-generation.md)
 - [0012 — Monorepo for all components](docs/adr/0012-monorepo.md)
@@ -68,3 +68,6 @@ story_walker/                       # monorepo root
 - [0015 — Layered architecture (Domain / Application / Infrastructure)](docs/adr/0015-layered-architecture.md)
 - [0016 — Central Package Management for NuGet versions](docs/adr/0016-central-package-management.md)
 - [0017 — Real PostgreSQL via Testcontainers for integration tests](docs/adr/0017-testcontainers-for-integration-tests.md)
+- [0018 — Persist agent conversations in PostgreSQL](docs/adr/0018-persist-agent-conversations.md)
+- [0019 — MVP scope reduction: self-contained six-page stories](docs/adr/0019-mvp-scope-reduction.md)
+- [0020 — A plain Service Bus function instead of Durable Functions](docs/adr/0020-plain-service-bus-function-for-generation.md)

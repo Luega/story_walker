@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Isolated worker: the function code runs out-of-process from the Functions host. -->
+    <FunctionsAutoRegisterGeneratedMetadataProvider>true</FunctionsAutoRegisterGeneratedMetadataProvider>
+  </PropertyGroup>
+
+  <ItemGroup Label="Functions worker + triggers">
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shares the brief contract + queue name with the producer (ADR-0012/0013). -->
+    <ProjectReference Include="..\..\src\StoryWalker.Application\StoryWalker.Application.csproj" />
+    <!-- The activities persist pages and render images, so the worker needs the EF model and the
+         Foundry/Blob adapters (ADR-0004). -->
+    <ProjectReference Include="..\..\src\StoryWalker.Infrastructure\StoryWalker.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

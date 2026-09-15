@@ -1,31 +1,23 @@
 namespace StoryWalker.Application.Api;
 
-// Inferred REST DTOs for the dashboard / story-viewer / agent flow. No endpoint contract is
-// documented yet (C4 container diagram only) — refine when the API endpoints are designed.
-// Status fields are strings to keep Contracts free of a Domain dependency (wire-friendly).
+// REST DTOs for the story-viewer / agent flow. Status fields are strings to keep the wire
+// contract free of a Domain dependency.
 
-/// <summary>Dashboard list item — a story summary card.</summary>
+/// <summary>List item — a story summary card.</summary>
 public record StorySummaryDto(Guid Id, string Title, string Status, DateTime CreatedAt);
 
-/// <summary>Full story for the live viewer.</summary>
+/// <summary>Full story for the viewer.</summary>
 public record StoryDto(
     Guid Id,
     string Title,
-    string Summary,
+    int TargetAge,
     string Status,
     string ArtStyle,
-    string Palette,
-    Guid? BasedOnStoryId,
-    IReadOnlyList<PageDto> Pages,
-    IReadOnlyList<CharacterDto> Characters
+    IReadOnlyList<PageDto> Pages
 );
 
+/// <summary><c>ImageUrl</c> is null until the worker has rendered this page (ADR-0010).</summary>
 public record PageDto(int PageNo, string Content, string? ImageUrl, string Status);
-
-public record CharacterDto(Guid Id, string Name, string Description, string? ReferenceImageUrl);
-
-/// <summary>Body of the <c>202 Accepted</c> returned when generation is enqueued (ADR-0003).</summary>
-public record CreateStoryResponse(Guid StoryId, string Status);
 
 /// <summary>Body of <c>PATCH /stories/{id}</c> — renames a story (title only).</summary>
 public record UpdateStoryTitleRequest(string Title);

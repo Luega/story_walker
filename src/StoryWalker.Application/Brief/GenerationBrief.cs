@@ -1,37 +1,34 @@
 namespace StoryWalker.Application.Brief;
 
 /// <summary>
-/// The complete, schema-validated generation brief the agent emits when it has enough
-/// information (ADR-0013). The API validates it and enqueues it on the ingestion queue
-/// (ADR-0003); the Durable worker renders images and embeds the text from it (ADR-0004).
+/// The complete, schema-validated generation brief the agent emits when the interview is
+/// confirmed (ADR-0013). The API validates it and enqueues it on the ingestion queue (ADR-0003);
+/// the Durable worker persists the pages and renders one image per page (ADR-0004).
 /// This is the producer/consumer contract — serialized as camelCase JSON.
+/// <para>
+/// Every story is self-contained (ADR-0019): there is no character table and no link to another
+/// story, so a character's appearance survives only inside the page prompts that describe it.
+/// </para>
 /// </summary>
+/// <param name="TargetAge">
+/// Age of the child the story is written for. Drives sentence length and vocabulary in the prose
+/// the agent authors, and is appended to every illustration prompt by the worker.
+/// </param>
+/// <param name="ArtStyle">
+/// One style phrase for the whole story. The worker appends it verbatim to every page prompt, and
+/// that identical trailing text is what buys stylistic coherence across the six images.
+/// </param>
 public record GenerationBrief(
-    BriefStory Story,
+    string Title,
+    int TargetAge,
     string ArtStyle,
-    string Palette,
-    IReadOnlyList<BriefCharacter> Characters,
     IReadOnlyList<BriefPage> Pages);
 
-/// <param name="Title">The story title.</param>
-/// <param name="BasedOnStoryId">Set when reusing another story's characters + art style; null for a fresh story.</param>
-public record BriefStory(
-    string Title,
-    Guid? BasedOnStoryId);
-
-/// <param name="ExistingCharacterId">
-/// Set for a reused character so the worker's <c>ResolveRefImage</c> retrieves the existing
-/// reference image instead of generating a new one; null for a new character.
+/// <param name="IllustrationPrompt">
+/// Must restate, in full, the physical appearance of every character appearing on this page —
+/// the model has no memory of the other pages' prompts.
 /// </param>
-public record BriefCharacter(
-    string Name,
-    string Description,
-    string IllustrationPrompt,
-    Guid? ExistingCharacterId);
-
-/// <param name="Characters">Names of the characters who appear on this page; populates CHARACTER_PAGE.</param>
 public record BriefPage(
     int PageNo,
     string Text,
-    string IllustrationPrompt,
-    IReadOnlyList<string> Characters);
+    string IllustrationPrompt);

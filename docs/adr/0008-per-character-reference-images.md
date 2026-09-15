@@ -1,8 +1,11 @@
 # ADR 0008 — Per-character reference images for visual consistency
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0019](0019-mvp-scope-reduction.md)
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
+
+
+> **Superseded (2026-09-15) by [ADR-0019](0019-mvp-scope-reduction.md).** The per-character locked seed this relies on does not exist in the image API; consistency is now bought through the prompt.
 
 ## Context
 

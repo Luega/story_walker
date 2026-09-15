@@ -1,50 +1,74 @@
 # apps/api — ASP.NET Core API
 
-The ASP.NET Core Web API: validates Clerk JWTs, owns the domain data (PostgreSQL + pgvector),
-runs the information-gathering agent (Microsoft Foundry), and enqueues generation jobs on
-Azure Service Bus (fire-and-forget, returns `202`). References the shared libraries in
-[`../../src`](../../src).
+The ASP.NET Core Web API: owns the domain data (PostgreSQL), runs the information-gathering agent
+(Microsoft Foundry), and enqueues generation jobs on Azure Service Bus (fire-and-forget, returns
+`202`). References the shared libraries in [`../../src`](../../src). Authentication (Clerk,
+ADR-0002) is not wired yet: every story is owned by the seeded demo user.
+
+## Configuration
+
+Locally the API reads `appsettings.Development.json`, which is **git-ignored** (`.gitignore`
+excludes every `appsettings.*.json` except the base file) because it can hold a Foundry key. Start
+from the committed template:
+
+```bash
+cp apps/api/appsettings.Development.json.example apps/api/appsettings.Development.json
+```
+
+then fill in `Foundry:Endpoint` and `Foundry:Deployment` — the API refuses to start without them.
+The Postgres and Service Bus values already point at `docker-compose.yml` and work as-is. The
+template's odd extension is deliberate: `appsettings.Development.example.json` would match the
+ignore rule and never reach the repository.
+
+| Key | Local value | Notes |
+|---|---|---|
+| `ConnectionStrings:Postgres` | compose's postgres | Override with `ConnectionStrings__Postgres`. |
+| `Foundry:Endpoint` | **you fill in** | Your Foundry resource, e.g. `https://<name>.services.ai.azure.com`. |
+| `Foundry:Deployment` | **you fill in** | The **chat** model deployment the agent runs on. The worker uses a different, image deployment on the same resource. |
+| `Foundry:ApiKey` | optional | Leave empty to authenticate with your own `az login`. **Secret** — never commit a real value. |
+| `ServiceBus:ConnectionString` | emulator string | The emulator key is a public placeholder, not a secret. |
+
+Running the API **in a container** instead reads the same settings from environment variables
+(`Foundry__Endpoint`, …) set by `docker-compose.yml` from a root `.env` file — copy
+[`../../.env.example`](../../.env.example) for that path. There is no `az login` inside the
+container, so that path needs `FOUNDRY_API_KEY`.
 
 ## Run locally
 
-From the repository root, either run everything in Docker, or run only the DB in Docker and the
-API on the host.
+From the repository root.
 
-**Everything in Docker** (one command — DB + API):
+**API on the host** (faster inner loop, and reuses your `az login`):
 
 ```bash
-docker compose up --build         # builds the API image, starts postgres + api
+docker compose up -d               # infrastructure only (postgres, Service Bus emulator, azurite, pgAdmin, Storage Explorer)
+dotnet run --project apps/api      # build + run the API on the host
 ```
 
-The `api` service waits for postgres to be healthy, then migrates and seeds on startup. It reaches
-the DB by service name (`Host=postgres`), injected via the `ConnectionStrings__Postgres`
-environment variable in [`../../docker-compose.yml`](../../docker-compose.yml).
-
-**API on the host** (faster inner loop — DB in Docker, API via `dotnet`):
+**API in Docker** — it sits behind the `api` compose profile:
 
 ```bash
-docker compose up -d postgres     # start only PostgreSQL (pgvector image) on localhost:5432
-dotnet run --project apps/api      # build + run the API on the host
+docker compose --profile api up --build
 ```
 
 In both modes, on startup in **Development** the API applies the latest EF Core migration and
 seeds demo data (idempotent), then serves:
 
-- Swagger UI — <http://localhost:5080/swagger>
+- Swagger UI — <http://localhost:5080/swagger> (same port on the host and in Docker)
 
 | Method & route | Purpose | Responses |
 | --- | --- | --- |
 | `GET /health` | Liveness probe | `200` `"healthy"` |
-| `GET /stories` | Story summaries (dashboard list) | `200` |
-| `GET /stories/{id}` | Full story with pages and characters | `200`, `404` |
+| `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `502` unusable brief, `503` no user to own the story |
+| `GET /stories` | Story summaries | `200` |
+| `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` |
 | `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` |
-| `DELETE /stories/{id}` | Delete a story (pages + links cascade; characters kept) | `204`, `404`, `409` if another story reuses it |
+| `DELETE /stories/{id}` | Delete a story (pages cascade) | `204`, `404` |
 
 `PATCH` takes `{ "title": "..." }` and returns the updated story.
 
-The connection string lives in [`appsettings.Development.json`](appsettings.Development.json)
-under `ConnectionStrings:Postgres`; override it with the `ConnectionStrings__Postgres`
-environment variable.
+After a `202`, poll `GET /stories/{id}`: the story stays `Generating` until the worker in
+[`../functions`](../functions) has rendered the pages, then becomes `Complete` (or `Failed` if no
+page could be illustrated).
 
 ## Inspect the database (pgAdmin)
 
@@ -65,7 +89,8 @@ Endpoint integration tests live in
 [`../../tests/StoryWalker.Api.Tests`](../../tests/StoryWalker.Api.Tests). They boot the real API in
 memory (`WebApplicationFactory<Program>`) against a **throwaway PostgreSQL** started with
 Testcontainers (`pgvector/pgvector:pg17`), so the relational behaviour the endpoints rely on (cascade
-deletes, the `BasedOnStory` `Restrict` FK → `409`, EF→SQL projections) is exercised for real. The
+deletes, EF→SQL projections) is exercised for real. The same suite also tests the worker's
+generation services (`GenerationServicesTests`). The
 container migrates once and Respawn resets the data between tests.
 
 ```bash

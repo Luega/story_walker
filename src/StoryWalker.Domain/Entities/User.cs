@@ -1,7 +1,7 @@
 namespace StoryWalker.Domain.Entities;
 
 /// <summary>
-/// An authenticated owner of stories and characters. Identity comes from Clerk (ADR-0002):
+/// An authenticated owner of stories. Identity comes from Clerk (ADR-0002):
 /// <see cref="ClerkUserId"/> is the external subject and is unique.
 /// </summary>
 public class User : EntityBase
@@ -12,7 +12,4 @@ public class User : EntityBase
     public required string Email { get; set; }
 
     public ICollection<Story> Stories { get; set; } = [];
-
-    /// <summary>Characters are user-owned and reusable across the user's stories.</summary>
-    public ICollection<Character> Characters { get; set; } = [];
 }

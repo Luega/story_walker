@@ -12,8 +12,8 @@ using StoryWalker.Infrastructure.Persistence;
 namespace StoryWalker.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(StoryWalkerDbContext))]
-    [Migration("20260627212155_AddConversations")]
-    partial class AddConversations
+    [Migration("20260915100437_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,64 +24,6 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("StoryWalker.Domain.Entities.Character", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.PrimitiveCollection<float[]>("Embedding")
-                        .HasColumnType("real[]");
-
-                    b.Property<string>("IllustrationPrompt")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ReferenceImageUrl")
-                        .HasColumnType("text");
-
-                    b.Property<long>("Seed")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Characters");
-                });
-
-            modelBuilder.Entity("StoryWalker.Domain.Entities.CharacterPage", b =>
-                {
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("PageId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("CharacterId", "PageId");
-
-                    b.HasIndex("PageId");
-
-                    b.ToTable("CharacterPages");
-                });
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
                 {
@@ -192,26 +134,15 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("BasedOnStoryId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.PrimitiveCollection<float[]>("Embedding")
-                        .HasColumnType("real[]");
-
-                    b.Property<string>("Palette")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Summary")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("TargetAge")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -224,8 +155,6 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BasedOnStoryId");
 
                     b.HasIndex("UserId");
 
@@ -260,36 +189,6 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("StoryWalker.Domain.Entities.Character", b =>
-                {
-                    b.HasOne("StoryWalker.Domain.Entities.User", "User")
-                        .WithMany("Characters")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("StoryWalker.Domain.Entities.CharacterPage", b =>
-                {
-                    b.HasOne("StoryWalker.Domain.Entities.Character", "Character")
-                        .WithMany("CharacterPages")
-                        .HasForeignKey("CharacterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("StoryWalker.Domain.Entities.Page", "Page")
-                        .WithMany("CharacterPages")
-                        .HasForeignKey("PageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Character");
-
-                    b.Navigation("Page");
-                });
-
             modelBuilder.Entity("StoryWalker.Domain.Entities.ConversationMessage", b =>
                 {
                     b.HasOne("StoryWalker.Domain.Entities.Conversation", "Conversation")
@@ -314,35 +213,18 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Story", b =>
                 {
-                    b.HasOne("StoryWalker.Domain.Entities.Story", "BasedOnStory")
-                        .WithMany()
-                        .HasForeignKey("BasedOnStoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("StoryWalker.Domain.Entities.User", "User")
                         .WithMany("Stories")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("BasedOnStory");
-
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("StoryWalker.Domain.Entities.Character", b =>
-                {
-                    b.Navigation("CharacterPages");
                 });
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
                 {
                     b.Navigation("Messages");
-                });
-
-            modelBuilder.Entity("StoryWalker.Domain.Entities.Page", b =>
-                {
-                    b.Navigation("CharacterPages");
                 });
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Story", b =>
@@ -352,8 +234,6 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.User", b =>
                 {
-                    b.Navigation("Characters");
-
                     b.Navigation("Stories");
                 });
 #pragma warning restore 612, 618

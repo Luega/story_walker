@@ -4,6 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- MEAI001: IImageGenerator and friends are marked experimental in Microsoft.Extensions.AI
+         10.7.0. We take the dependency knowingly (ADR-0011/0019) because it is the same abstraction
+         the chat path already uses; the surface may change on a future bump, and PageImageRenderer
+         is the single place that would have to follow. -->
+    <NoWarn>$(NoWarn);MEAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,12 +16,20 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
+  <ItemGroup Label="Messaging">
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+  </ItemGroup>
+
+  <ItemGroup Label="Storage">
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+
   <ItemGroup Label="AI / agents">
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Azure.Identity" />
-    <PackageReference Include="OllamaSharp" />
   </ItemGroup>
 
   <ItemGroup>

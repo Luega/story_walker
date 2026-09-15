@@ -97,22 +97,45 @@ services:
     depends_on:
       - mssql
 
-  # Azure Storage emulator: backs the Functions host runtime + the Durable Functions task hub.
-  # --skipApiVersionCheck: the Durable Task storage SDK sends a newer Storage API version than this
-  # Azurite build whitelists; without the flag every blob/queue/table call 400s and the Durable
-  # listeners never start.
+  # Azure Storage emulator: backs the Functions host runtime and stores the page images (ADR-0010).
+  # --skipApiVersionCheck: the storage SDKs send a newer Storage API version than this Azurite build
+  # whitelists; without the flag blob/queue/table calls 400.
+  # --location /data: the image's default command passes `-l /data`, but overriding `command` drops
+  # it, and Azurite then writes into its own install directory (/opt/azurite) — inside the
+  # container, gone on every recreate. It must be restated for the volume below to hold anything.
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest
     container_name: storywalker-azurite
-    command: azurite --skipApiVersionCheck --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    command: azurite --skipApiVersionCheck --location /data --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
     ports:
       - "10000:10000"                 # blob
       - "10001:10001"                 # queue
       - "10002:10002"                 # table
+    volumes:
+      # Page images persist across `docker compose down`. Without it the database kept ImageUrls that
+      # 404ed after every restart. `docker compose down -v` still wipes it, together with postgres.
+      - azurite-data:/data
 
-  # Durable Functions generation worker (ADR-0004). Behind the "worker" profile: `docker compose up`
-  # leaves it off so you can run/debug the worker locally against the emulator without two consumers
-  # fighting over the queue; `docker compose --profile worker up` runs it fully in-container.
+  # Web UI for Azurite — the storage counterpart of pgAdmin. Browse blob containers (with image
+  # previews), queues and tables at http://localhost:5055. Community project, MIT
+  # (github.com/sebagomez/azurestorageexplorer); pinned rather than `latest` so an upstream change
+  # cannot silently break the local setup. It runs server-side (Blazor Server), so it reaches Azurite
+  # by service name. No authentication: local development only.
+  storage-explorer:
+    image: sebagomez/azurestorageexplorer:4.0.0
+    container_name: storywalker-storage-explorer
+    environment:
+      # Logs straight in; the key is Azurite's well-known development key, not a secret.
+      AZURE_STORAGE_CONNECTIONSTRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
+    ports:
+      - "5055:8080"                   # browse at http://localhost:5055
+    depends_on:
+      - azurite
+
+  # Generation worker (ADR-0020): a Service Bus-triggered Functions host. Behind the "worker"
+  # profile: `docker compose up` leaves it off so you can run/debug the worker locally against the
+  # emulator without two consumers fighting over the queue; `docker compose --profile worker up`
+  # runs it fully in-container.
   functions:
     build:
       context: .                      # monorepo root, so the Dockerfile can reach src/
@@ -120,19 +143,33 @@ services:
     container_name: storywalker-functions
     environment:
       FUNCTIONS_WORKER_RUNTIME: dotnet-isolated
-      # Durable's DurableClient binding builds its HTTP management URLs from WEBSITE_HOSTNAME. Azure
-      # sets it automatically; in a plain container we must, or the binding throws on every trigger.
-      WEBSITE_HOSTNAME: "localhost:80"
       # Azurite is on a different host than localhost here, so the full connection string form is
-      # required (UseDevelopmentStorage=true only resolves to 127.0.0.1).
+      # required (UseDevelopmentStorage=true only resolves to 127.0.0.1). The Functions host needs
+      # AzureWebJobsStorage for any non-HTTP trigger, independently of what the function does.
       AzureWebJobsStorage: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
       ServiceBusConnection: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      # The activities write pages and read the story, so the worker needs the database too.
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker"
+      # The Foundry image deployment (ADR-0011). Separate from the API's chat deployment: the two
+      # call different models on the same resource.
+      Foundry__Endpoint: "${FOUNDRY_ENDPOINT:-}"
+      Foundry__ImageDeployment: "${FOUNDRY_IMAGE_DEPLOYMENT:-}"
+      Foundry__ApiKey: "${FOUNDRY_API_KEY:-}"
+      # Page images (ADR-0010). Same azurite account as the Functions runtime, different container.
+      Storage__ConnectionString: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+      Storage__Container: "story-images"
+      # NOT derived from the upload URI: the worker uploads through http://azurite:10000, a hostname
+      # that does not resolve outside the compose network. The URL we persist has to be the one a
+      # browser on the host can open.
+      Storage__PublicBaseUrl: "http://localhost:10000/devstoreaccount1"
     depends_on:
       - servicebus-emulator
       - azurite
+      - postgres
     profiles:
       - worker
 
 volumes:
   postgres-data:
   pgadmin-data:
+  azurite-data:

@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "default": "Information"
+    },
+    "console": {
+      "isEnabled": true
+    }
+  },
+  "extensions": {
+    "serviceBus": {
+      "maxConcurrentCalls": 1,
+      "maxAutoLockRenewalDuration": "00:25:00"
+    }
+  },
+  "functionTimeout": "00:20:00"
+}

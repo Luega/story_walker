@@ -1,8 +1,8 @@
 namespace StoryWalker.Domain.Entities;
 
 /// <summary>
-/// Base type for entities with their own identity. The join entity
-/// <see cref="CharacterPage"/> does not inherit this — it has a composite key and no own id.
+/// Base type for entities with their own identity. Timestamps are stamped by the DbContext's
+/// SaveChanges override, never by callers.
 /// </summary>
 public abstract class EntityBase
 {

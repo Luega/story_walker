@@ -20,18 +20,11 @@ public static class StoryEndpoints
     private static readonly Expression<Func<Story, StoryDto>> ToStoryDto = s => new StoryDto(
         s.Id,
         s.Title,
-        s.Summary,
+        s.TargetAge,
         s.Status.ToString(),
         s.ArtStyle,
-        s.Palette,
-        s.BasedOnStoryId,
         s.Pages.OrderBy(p => p.PageNo)
             .Select(p => new PageDto(p.PageNo, p.Content, p.ImageUrl, p.Status.ToString()))
-            .ToList(),
-        s.Pages.SelectMany(p => p.CharacterPages)
-            .Select(cp => cp.Character)
-            .Distinct()
-            .Select(c => new CharacterDto(c.Id, c.Name, c.Description, c.ReferenceImageUrl))
             .ToList()
     );
 
@@ -77,6 +70,14 @@ public static class StoryEndpoints
                         if (turn is { BriefReady: true, Brief: not null })
                         {
                             var story = await StartGenerationAsync(db, publisher, turn.Brief, ct);
+                            if (story is null)
+                            {
+                                return Results.Problem(
+                                    detail: "No user exists to own the story. Seed the database first.",
+                                    statusCode: StatusCodes.Status503ServiceUnavailable
+                                );
+                            }
+
                             return Results.Accepted(
                                 $"/stories/{story.Id}",
                                 new StoryQueuedResponse(story.Id, story.Status.ToString())
@@ -188,18 +189,9 @@ public static class StoryEndpoints
 
                     db.Stories.Remove(story);
 
-                    try
-                    {
-                        // Pages + CharacterPage links cascade (StoryConfiguration); user-owned Characters
-                        // are kept. A story that another story is "based on" is protected by a Restrict FK.
-                        await db.SaveChangesAsync();
-                    }
-                    catch (DbUpdateException)
-                    {
-                        return Results.Conflict(
-                            "Story cannot be deleted because another story reuses it."
-                        );
-                    }
+                    // Pages cascade (StoryConfiguration). Nothing else references a story: every
+                    // story is self-contained (ADR-0019), so the delete cannot conflict.
+                    await db.SaveChangesAsync();
 
                     return Results.NoContent();
                 }
@@ -212,9 +204,10 @@ public static class StoryEndpoints
     /// <summary>
     /// Persists a <see cref="Story"/> in <see cref="StoryStatus.Generating"/> from the authored brief
     /// and enqueues that brief for the generation worker (ADR-0003). Only the story row is created
-    /// here; the worker's <c>PersistBrief</c> activity writes the pages and characters.
+    /// here; the worker's <c>PersistPages</c> activity writes the pages.
+    /// Returns null when the database has no user to own the story.
     /// </summary>
-    private static async Task<Story> StartGenerationAsync(
+    private static async Task<Story?> StartGenerationAsync(
         StoryWalkerDbContext db,
         IBriefPublisher publisher,
         GenerationBrief brief,
@@ -222,25 +215,23 @@ public static class StoryEndpoints
     )
     {
         // Ownership: until Clerk auth lands (ADR-0002) there is no current user, so the story is
-        // owned by the single seeded user. Fails fast if the database has no user at all.
+        // owned by the single seeded user. DbSeeder only runs in Development, so in any other
+        // environment this is the first thing that goes wrong — and it would otherwise surface as
+        // an unhandled 500 on the very last turn of a conversation.
         var userId = await db.Users.Select(u => u.Id).FirstOrDefaultAsync(ct);
         if (userId == Guid.Empty)
         {
-            throw new InvalidOperationException(
-                "Cannot start generation: no user exists to own the story."
-            );
+            return null;
         }
 
         var story = new Story
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Title = brief.Story.Title,
-            // The brief carries no summary yet (ADR-0013); EmbedStory will need one later.
-            Summary = string.Empty,
+            Title = brief.Title,
+            TargetAge = brief.TargetAge,
             Status = StoryStatus.Generating,
             ArtStyle = brief.ArtStyle,
-            Palette = brief.Palette,
         };
 
         db.Stories.Add(story);

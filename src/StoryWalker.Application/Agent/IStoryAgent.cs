@@ -4,8 +4,8 @@ namespace StoryWalker.Application.Agent;
 
 /// <summary>
 /// The conversational agent that interviews the user toward a generation brief (ADR-0011).
-/// One implementation drives any chat backend (local Ollama or a Foundry chat-model deployment)
-/// through <c>Microsoft.Extensions.AI</c>, so the same logic runs locally and in the cloud.
+/// One implementation drives the chat backend (a Foundry chat-model deployment) through
+/// <c>Microsoft.Extensions.AI</c>, so the same logic runs locally and in the cloud.
 /// </summary>
 public interface IStoryAgent
 {

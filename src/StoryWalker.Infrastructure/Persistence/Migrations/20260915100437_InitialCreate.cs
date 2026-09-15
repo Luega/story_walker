@@ -12,6 +12,21 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "Conversations",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Conversations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -27,27 +42,24 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Characters",
+                name: "ConversationMessages",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: false),
-                    IllustrationPrompt = table.Column<string>(type: "text", nullable: false),
-                    ReferenceImageUrl = table.Column<string>(type: "text", nullable: true),
-                    Seed = table.Column<long>(type: "bigint", nullable: false),
-                    Embedding = table.Column<float[]>(type: "real[]", nullable: true),
+                    ConversationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Seq = table.Column<int>(type: "integer", nullable: false),
+                    Role = table.Column<string>(type: "text", nullable: false),
+                    Content = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Characters", x => x.Id);
+                    table.PrimaryKey("PK_ConversationMessages", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Characters_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
+                        name: "FK_ConversationMessages_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalTable: "Conversations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -58,25 +70,16 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    BasedOnStoryId = table.Column<Guid>(type: "uuid", nullable: true),
                     Title = table.Column<string>(type: "text", nullable: false),
-                    Summary = table.Column<string>(type: "text", nullable: false),
+                    TargetAge = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
                     ArtStyle = table.Column<string>(type: "text", nullable: false),
-                    Palette = table.Column<string>(type: "text", nullable: false),
-                    Embedding = table.Column<float[]>(type: "real[]", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Stories", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Stories_Stories_BasedOnStoryId",
-                        column: x => x.BasedOnStoryId,
-                        principalTable: "Stories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Stories_Users_UserId",
                         column: x => x.UserId,
@@ -110,50 +113,17 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "CharacterPages",
-                columns: table => new
-                {
-                    CharacterId = table.Column<Guid>(type: "uuid", nullable: false),
-                    PageId = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_CharacterPages", x => new { x.CharacterId, x.PageId });
-                    table.ForeignKey(
-                        name: "FK_CharacterPages_Characters_CharacterId",
-                        column: x => x.CharacterId,
-                        principalTable: "Characters",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_CharacterPages_Pages_PageId",
-                        column: x => x.PageId,
-                        principalTable: "Pages",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
-                name: "IX_CharacterPages_PageId",
-                table: "CharacterPages",
-                column: "PageId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Characters_UserId",
-                table: "Characters",
-                column: "UserId");
+                name: "IX_ConversationMessages_ConversationId_Seq",
+                table: "ConversationMessages",
+                columns: new[] { "ConversationId", "Seq" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Pages_StoryId_PageNo",
                 table: "Pages",
                 columns: new[] { "StoryId", "PageNo" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Stories_BasedOnStoryId",
-                table: "Stories",
-                column: "BasedOnStoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Stories_UserId",
@@ -171,13 +141,13 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "CharacterPages");
-
-            migrationBuilder.DropTable(
-                name: "Characters");
+                name: "ConversationMessages");
 
             migrationBuilder.DropTable(
                 name: "Pages");
+
+            migrationBuilder.DropTable(
+                name: "Conversations");
 
             migrationBuilder.DropTable(
                 name: "Stories");

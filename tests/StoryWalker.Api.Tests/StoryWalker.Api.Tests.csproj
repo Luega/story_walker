@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Same experimental image abstraction the renderer uses; see StoryWalker.Infrastructure.csproj. -->
+    <NoWarn>$(NoWarn);MEAI001</NoWarn>
     <IsPackable>false</IsPackable>
     <!-- xUnit v3 test projects are executables. -->
     <OutputType>Exe</OutputType>

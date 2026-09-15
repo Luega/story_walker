@@ -22,13 +22,30 @@
   </ItemGroup>
 
   <ItemGroup Label="AI / agents">
-    <!-- Unified chat abstraction (IChatClient) so the same StoryAgent runs against Ollama
-         locally and a Foundry chat-model deployment in the cloud. See the agent-endpoint ADR. -->
+    <!-- Unified chat abstraction (IChatClient) over the Foundry chat-model deployment the
+         StoryAgent runs against (ADR-0011). See the agent-endpoint ADR. -->
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="OllamaSharp" Version="5.4.25" />
+  </ItemGroup>
+
+  <ItemGroup Label="Storage">
+    <!-- Page images live in Blob Storage; the DB stores only the URL (ADR-0010). Locally this is
+         the azurite service already in compose. -->
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
+    <!-- IHttpClientFactory, for the fallback path where an image deployment returns a URL. -->
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Messaging / Functions">
+    <!-- Producer (apps/api → Infrastructure): publishes the validated brief onto the ingestion
+         queue (ADR-0003). Consumer (apps/functions): the isolated-worker Functions host triggered
+         by that queue (ADR-0020). -->
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
@@ -37,6 +54,12 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Respawn" Version="7.0.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
+    <!-- Transitive via Testcontainers, pinned only to clear the NU1903 advisory on 2025.1.0
+         (CVE-2026-48798, path traversal in ScpClient.Download). Not exploitable here — Testcontainers
+         uses SshClient/ForwardedPortRemote for port forwarding and never touches ScpClient — but a
+         permanent build warning is one you stop reading. Transitive pinning makes this one line
+         (ADR-0016). Drop it once Testcontainers ships a build that floors SSH.NET at 2026.0.0. -->
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>

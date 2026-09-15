@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Respawn;
 using StoryWalker.Application.Agent;
+using StoryWalker.Application.Messaging;
 using StoryWalker.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 
@@ -14,7 +15,7 @@ namespace StoryWalker.Api.Tests;
 /// <summary>
 /// Boots the real API in memory (<see cref="WebApplicationFactory{TEntryPoint}"/>) against a
 /// throwaway PostgreSQL started with Testcontainers, so the relational behaviour the endpoints rely
-/// on (cascade deletes, the <c>BasedOnStory</c> Restrict FK → 409, EF→SQL projections) is exercised
+/// on (cascade deletes, EF→SQL projections) is exercised
 /// for real. The container is migrated once; <see cref="ResetAsync"/> wipes data between tests.
 /// </summary>
 public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
@@ -26,6 +27,9 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
 
     private Respawner _respawner = null!;
 
+    /// <summary>Records enqueued briefs so tests can assert the publish without a real Service Bus.</summary>
+    public RecordingBriefPublisher Publisher { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // "Testing" (not Development) so Program.cs's startup auto-migrate/seed block stays off —
@@ -34,12 +38,23 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
         // CreateBuilder reads before builder.Build() — the same mechanism docker-compose uses.
         builder.UseEnvironment("Testing");
 
-        // Pin the lazy Ollama backend so Program's Foundry-config guard doesn't trip in Testing, then
-        // replace the agent with a fake — the real IChatClient is never resolved, so nothing connects.
-        builder.UseSetting("Agent:Provider", "Ollama");
-        builder.ConfigureTestServices(services =>
-            services.AddSingleton<IStoryAgent>(new FakeStoryAgent())
+        // Placeholder Foundry settings so Program's config guards pass; the agent is replaced with a
+        // fake below and the IChatClient is registered lazily, so nothing authenticates or connects.
+        builder.UseSetting("Foundry:Endpoint", "https://foundry.invalid/");
+        builder.UseSetting("Foundry:Deployment", "test-deployment");
+
+        // A well-formed emulator connection string so Program's ServiceBus guard passes; the real
+        // publisher is replaced below, so no Service Bus connection is ever opened.
+        builder.UseSetting(
+            "ServiceBus:ConnectionString",
+            "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
         );
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<IStoryAgent>(new FakeStoryAgent());
+            services.AddSingleton<IBriefPublisher>(Publisher);
+        });
     }
 
     /// <summary>Runs an action against a fresh scoped <see cref="StoryWalkerDbContext"/>.</summary>

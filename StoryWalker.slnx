@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/apps/">
     <Project Path="apps/api/StoryWalker.Api.csproj" />
+    <Project Path="apps/functions/StoryWalker.Functions.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/StoryWalker.Application/StoryWalker.Application.csproj" />

@@ -1,8 +1,11 @@
 # ADR 0004 — Durable Functions for the generation pipeline
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0020](0020-plain-service-bus-function-for-generation.md)
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
+
+
+> **Superseded (2026-09-15) by [ADR-0020](0020-plain-service-bus-function-for-generation.md).** The pipeline it was chosen for no longer exists: after ADR-0019 the work is linear and short, and the database already provides the checkpointing.
 
 ## Context
 

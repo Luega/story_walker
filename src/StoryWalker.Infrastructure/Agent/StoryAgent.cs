@@ -9,8 +9,8 @@ using StoryWalker.Infrastructure.Persistence;
 namespace StoryWalker.Infrastructure.Agent;
 
 /// <summary>
-/// The single agent implementation, provider-agnostic over <see cref="IChatClient"/>: the same
-/// logic runs against local Ollama and a Foundry chat-model deployment (ADR-0011 refinement).
+/// The single agent implementation, written against <see cref="IChatClient"/> rather than a
+/// concrete SDK; the registered client is a Foundry chat-model deployment (ADR-0011).
 /// Conversation history is persisted (ADR-0018) so it survives restarts and multiple instances;
 /// each turn loads the stored messages, sends the full history to the model, and appends the new
 /// turns. A new conversation is seeded with the <see cref="StoryAgentPrompt"/> system message.
@@ -118,7 +118,6 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
 
             if (response.TryGetResult(out var brief))
             {
-                brief = ForceNewCharacters(brief);
                 errors = GenerationBriefValidator.Validate(brief);
                 if (errors.Count == 0)
                 {
@@ -133,17 +132,6 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
 
         throw new BriefValidationException(errors);
     }
-
-    /// <summary>Reuse is deferred (ADR-0009), so blank out the reuse links the model may have set.</summary>
-    private static GenerationBrief ForceNewCharacters(GenerationBrief brief) =>
-        brief with
-        {
-            Story = brief.Story with { BasedOnStoryId = null },
-            Characters =
-            [
-                .. brief.Characters.Select(c => c with { ExistingCharacterId = null }),
-            ],
-        };
 
     /// <summary>
     /// Appends a message to the conversation graph and tracks it as inserted. Adding to the DbSet

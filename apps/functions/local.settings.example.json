@@ -1,0 +1,18 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ServiceBusConnection": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+
+    "ConnectionStrings:Postgres": "Host=localhost;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker",
+
+    "Foundry:Endpoint": "",
+    "Foundry:ImageDeployment": "",
+    "Foundry:ApiKey": "",
+
+    "Storage:ConnectionString": "UseDevelopmentStorage=true",
+    "Storage:Container": "story-images",
+    "Storage:PublicBaseUrl": "http://localhost:10000/devstoreaccount1"
+  }
+}

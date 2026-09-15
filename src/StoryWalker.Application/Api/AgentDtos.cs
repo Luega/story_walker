@@ -1,5 +1,3 @@
-using StoryWalker.Application.Brief;
-
 namespace StoryWalker.Application.Api;
 
 // Wire shape for the agent-chat endpoint (POST /stories/conversations). The conversation id is
@@ -12,9 +10,17 @@ public record AgentMessageRequest(
 
 /// <param name="ConversationId">The conversation to continue on the next turn.</param>
 /// <param name="BriefReady">True when the agent has emitted a complete brief and generation can start.</param>
-/// <param name="Brief">The authored, validated generation brief on the final turn; null otherwise.</param>
 public record AgentMessageResponse(
     string ConversationId,
     string Reply,
-    bool BriefReady,
-    GenerationBrief? Brief = null);
+    bool BriefReady);
+
+/// <summary>
+/// Returned with 202 Accepted when the agent has authored a brief: the story has been persisted
+/// (<c>status = Generating</c>) and its brief enqueued for the generation worker (ADR-0003). Clients
+/// poll <c>GET /stories/{storyId}</c> for progress. The brief itself is not returned — it goes on the
+/// queue, not to the browser.
+/// </summary>
+public record StoryQueuedResponse(
+    Guid StoryId,
+    string Status);

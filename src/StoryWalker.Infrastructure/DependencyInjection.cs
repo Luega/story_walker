@@ -1,13 +1,18 @@
+using System.Net.Http;
 using Azure;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using StoryWalker.Application.Agent;
+using StoryWalker.Application.Images;
 using StoryWalker.Application.Messaging;
 using StoryWalker.Infrastructure.Agent;
+using StoryWalker.Infrastructure.Generation;
+using StoryWalker.Infrastructure.Images;
 using StoryWalker.Infrastructure.Messaging;
 using StoryWalker.Infrastructure.Persistence;
 
@@ -83,6 +88,81 @@ public static class DependencyInjection
             return client.GetChatClient(deployment).AsIChatClient();
         });
         services.AddScoped<IStoryAgent, StoryAgent>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the Foundry image deployment as an <see cref="IImageGenerator"/>. The deployment is a
+    /// Black Forest Labs FLUX model called through its provider route (<see cref="FluxImageGenerator"/>),
+    /// not <c>AzureOpenAIClient.GetImageClient</c>: that client targets
+    /// <c>/openai/deployments/{name}/images/generations</c>, which Foundry does not serve for FLUX.2 and
+    /// answers with 404.
+    /// <para>
+    /// Credentials follow the same rule as <see cref="AddFoundryChat"/>: an explicit key when supplied,
+    /// otherwise <see cref="DefaultAzureCredential"/>. The model name is validated here, at startup,
+    /// so a typo stops the worker immediately instead of failing every page of every story.
+    /// </para>
+    /// </summary>
+    public static IServiceCollection AddFoundryImages(
+        this IServiceCollection services,
+        string endpoint,
+        string deployment,
+        string? apiKey = null
+    )
+    {
+        FluxImageGenerator.RoutePathFor(deployment);
+
+        // Measured against FLUX.2-pro on 2026-09-15: successful 1024x1024 renders answered in 8-10.5 s,
+        // but 2 of 8 requests never answered at all and ran into the timeout. A hung request is
+        // retried (the renderer treats a timeout as transient), so the ceiling decides what a hang
+        // costs: 60 s, about six times the slowest success, instead of the minutes it would otherwise
+        // burn per page.
+        services.AddHttpClient(nameof(FluxImageGenerator), http => http.Timeout = TimeSpan.FromSeconds(60));
+
+        services.AddSingleton<IImageGenerator>(sp => new FluxImageGenerator(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(FluxImageGenerator)),
+            endpoint,
+            deployment,
+            apiKey,
+            string.IsNullOrWhiteSpace(apiKey) ? new DefaultAzureCredential() : null
+        ));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers Blob Storage as the page-image store (ADR-0010). <paramref name="publicBaseUrl"/>
+    /// is what the stored URL is composed from; it is a separate setting because the host the worker
+    /// uploads through is not the host the image is later opened from (see <see cref="BlobImageStore"/>).
+    /// </summary>
+    public static IServiceCollection AddImageStorage(
+        this IServiceCollection services,
+        string connectionString,
+        string containerName,
+        string publicBaseUrl
+    )
+    {
+        services.AddSingleton(_ => new BlobServiceClient(connectionString));
+        services.AddSingleton<IImageStore>(sp => new BlobImageStore(
+            sp.GetRequiredService<BlobServiceClient>(),
+            containerName,
+            publicBaseUrl
+        ));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the services the Durable activities delegate to. Scoped, because both share the
+    /// scoped <see cref="StoryWalkerDbContext"/>; the worker opens a scope per activity.
+    /// </summary>
+    public static IServiceCollection AddGeneration(this IServiceCollection services)
+    {
+        // Only used when a deployment hands back a URL instead of the image bytes.
+        services.AddHttpClient();
+        services.AddScoped<StoryPersister>();
+        services.AddScoped<PageImageRenderer>();
 
         return services;
     }

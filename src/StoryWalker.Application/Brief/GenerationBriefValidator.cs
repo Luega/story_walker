@@ -8,14 +8,22 @@ namespace StoryWalker.Application.Brief;
 /// </summary>
 public static class GenerationBriefValidator
 {
-    /// <summary>Hard cap on pages per story (product rule; keeps the brief and generation bounded).</summary>
-    public const int MaxPages = 10;
+    /// <summary>
+    /// Every story is exactly this long (product rule, ADR-0019). An exact count rather than a cap:
+    /// the worker sizes its per-page work from it, and the agent prompt promises the same number.
+    /// </summary>
+    public const int PageCount = 6;
+
+    /// <summary>Bounds on the child's age. Keeps a typo from asking for prose for a 0-year-old.</summary>
+    public const int MinTargetAge = 1;
+
+    public const int MaxTargetAge = 17;
 
     public static IReadOnlyList<string> Validate(GenerationBrief brief)
     {
         var errors = new List<string>();
 
-        if (string.IsNullOrWhiteSpace(brief.Story.Title))
+        if (string.IsNullOrWhiteSpace(brief.Title))
         {
             errors.Add("Story title is required.");
         }
@@ -25,66 +33,28 @@ public static class GenerationBriefValidator
             errors.Add("Art style is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(brief.Palette))
+        if (brief.TargetAge is < MinTargetAge or > MaxTargetAge)
         {
-            errors.Add("Palette is required.");
+            errors.Add(
+                $"Target age must be between {MinTargetAge} and {MaxTargetAge}, but the brief has {brief.TargetAge}."
+            );
         }
 
-        ValidateCharacters(brief, errors);
         ValidatePages(brief, errors);
 
         return errors;
     }
 
-    private static void ValidateCharacters(GenerationBrief brief, List<string> errors)
-    {
-        if (brief.Characters.Count == 0)
-        {
-            errors.Add("At least one character is required.");
-            return;
-        }
-
-        foreach (var character in brief.Characters)
-        {
-            if (string.IsNullOrWhiteSpace(character.Name))
-            {
-                errors.Add("A character is missing its name.");
-            }
-
-            if (string.IsNullOrWhiteSpace(character.Description))
-            {
-                errors.Add($"Character '{character.Name}' is missing a description.");
-            }
-
-            if (string.IsNullOrWhiteSpace(character.IllustrationPrompt))
-            {
-                errors.Add($"Character '{character.Name}' is missing an illustration prompt.");
-            }
-        }
-
-        var duplicateNames = brief
-            .Characters.Where(c => !string.IsNullOrWhiteSpace(c.Name))
-            .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key);
-
-        foreach (var name in duplicateNames)
-        {
-            errors.Add($"Duplicate character name '{name}'.");
-        }
-    }
-
     private static void ValidatePages(GenerationBrief brief, List<string> errors)
     {
-        if (brief.Pages.Count == 0)
+        if (brief.Pages.Count != PageCount)
         {
-            errors.Add("At least one page is required.");
-            return;
+            errors.Add($"A story must have exactly {PageCount} pages, but the brief has {brief.Pages.Count}.");
         }
 
-        if (brief.Pages.Count > MaxPages)
+        if (brief.Pages.Count == 0)
         {
-            errors.Add($"A story may have at most {MaxPages} pages, but the brief has {brief.Pages.Count}.");
+            return;
         }
 
         // pageNo must be contiguous 1..N so the worker can order and persist pages deterministically.
@@ -98,11 +68,6 @@ public static class GenerationBriefValidator
             }
         }
 
-        var characterNames = brief
-            .Characters.Select(c => c.Name)
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         foreach (var page in brief.Pages)
         {
             if (string.IsNullOrWhiteSpace(page.Text))
@@ -113,11 +78,6 @@ public static class GenerationBriefValidator
             if (string.IsNullOrWhiteSpace(page.IllustrationPrompt))
             {
                 errors.Add($"Page {page.PageNo} is missing an illustration prompt.");
-            }
-
-            foreach (var name in page.Characters.Where(n => !characterNames.Contains(n)))
-            {
-                errors.Add($"Page {page.PageNo} references unknown character '{name}'.");
             }
         }
     }
