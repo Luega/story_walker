@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listStories, type StorySummary } from "@/lib/api";
+import { deleteStory, listStories, renameStory, type StorySummary } from "@/lib/api";
 import { StoryCard } from "@/components/StoryCard";
 import { NewStoryModal } from "@/components/NewStoryModal";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 const POLL_MS = 5000;
 
@@ -11,6 +12,8 @@ export default function DashboardPage() {
   const [stories, setStories] = useState<StorySummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<StorySummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const generating = stories?.some((s) => s.status === "Generating") ?? false;
 
@@ -37,6 +40,37 @@ export default function DashboardPage() {
       clearTimeout(timer);
     };
   }, [generating]);
+
+  async function handleRename(story: StorySummary, title: string) {
+    try {
+      const saved = await renameStory(story.id, title);
+      setStories(
+        (list) => list?.map((s) => (s.id === story.id ? { ...s, title: saved } : s)) ?? null,
+      );
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+      // Rethrow so the card keeps the typed title in edit mode instead of discarding it.
+      throw e;
+    }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteStory(pendingDelete.id);
+      // Drop it locally instead of refetching: the list is already up to date otherwise.
+      setStories((list) => list?.filter((s) => s.id !== pendingDelete.id) ?? null);
+      setError(null);
+      setPendingDelete(null);
+    } catch (e) {
+      setError((e as Error).message);
+      setPendingDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -72,13 +106,22 @@ export default function DashboardPage() {
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stories.map((s) => (
             <li key={s.id} className="flex">
-              <StoryCard story={s} />
+              <StoryCard story={s} onDelete={setPendingDelete} onRename={handleRename} />
             </li>
           ))}
         </ul>
       )}
 
       {modalOpen && <NewStoryModal onClose={() => setModalOpen(false)} />}
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          title={pendingDelete.title}
+          busy={deleting}
+          onConfirm={confirmDelete}
+          onCancel={() => !deleting && setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

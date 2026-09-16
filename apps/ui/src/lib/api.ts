@@ -51,6 +51,30 @@ export async function getStory(id: string): Promise<Story | null> {
 }
 
 /**
+ * Renames a story. Returns the title as the server stored it (it trims), so the caller shows what
+ * was actually persisted rather than the raw input.
+ */
+export async function renameStory(id: string, title: string): Promise<string> {
+  const res = await fetch(`${BASE}/stories/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (res.status === 404) throw new Error("Storia non trovata.");
+  if (!res.ok) throw new Error(`Impossibile rinominare la storia (${res.status}).`);
+  const story: Story = await res.json();
+  return story.title;
+}
+
+/** Deletes a story and its pages. A 404 counts as success: the story is already gone. */
+export async function deleteStory(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/stories/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Impossibile eliminare la storia (${res.status}).`);
+  }
+}
+
+/**
  * Sends one chat turn to the story agent. 200 is an ordinary reply; 202 means the brief was
  * authored and the story is queued for generation; 404 means the conversation is gone.
  */
