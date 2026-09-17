@@ -10,7 +10,7 @@ namespace StoryWalker.Api.Tests;
 public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
 {
     private readonly StoryWalkerApiFactory _factory = factory;
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateClientAs("user_story_tests");
 
     // xUnit v3 hands each test a cancellation token (honours timeouts / cancellation); thread it
     // through the async calls so a hung request fails the test promptly instead of hanging.

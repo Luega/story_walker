@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StoryWalker.Api.Auth;
 using StoryWalker.Api.Endpoints;
 using StoryWalker.Infrastructure;
 using StoryWalker.Infrastructure.Persistence;
@@ -42,6 +43,25 @@ builder.Services.AddFoundryChat(
     builder.Configuration["Foundry:ApiKey"]
 );
 
+// Clerk-issued session tokens are the API's credentials (ADR-0002). Blank counts as unconfigured
+// for the same reason as Foundry above: compose always defines the variables.
+var clerkAuthority = builder.Configuration["Clerk:Authority"];
+if (string.IsNullOrWhiteSpace(clerkAuthority))
+{
+    throw new InvalidOperationException("'Clerk:Authority' is not configured.");
+}
+
+var authorizedParties = (builder.Configuration["Clerk:AuthorizedParties"] ?? string.Empty).Split(
+    ',',
+    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+);
+if (authorizedParties.Length == 0)
+{
+    throw new InvalidOperationException("'Clerk:AuthorizedParties' is not configured.");
+}
+
+builder.Services.AddClerkAuthentication(clerkAuthority, authorizedParties);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -59,6 +79,9 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
     await DbSeeder.SeedAsync(db);
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok("healthy"));
 app.MapStoryEndpoints();

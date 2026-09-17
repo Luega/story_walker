@@ -30,7 +30,7 @@ public static class StoryEndpoints
 
     public static IEndpointRouteBuilder MapStoryEndpoints(this IEndpointRouteBuilder app)
     {
-        var stories = app.MapGroup("/stories").WithTags("Stories");
+        var stories = app.MapGroup("/stories").WithTags("Stories").RequireAuthorization();
 
         stories
             .MapPost(

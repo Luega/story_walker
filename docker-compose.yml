@@ -46,6 +46,11 @@ services:
       # Publishes the authored brief to the Service Bus emulator (reached by service name). The
       # SharedAccessKey is the literal emulator placeholder; UseDevelopmentEmulator=true selects it.
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      # Clerk session tokens are the API's credentials (ADR-0002). The authority is the instance
+      # URL (JWKS is discovered from it); authorized parties is the comma-separated list of origins
+      # allowed to obtain tokens for this API — the Next.js app in dev.
+      Clerk__Authority: "${CLERK_AUTHORITY:-}"
+      Clerk__AuthorizedParties: "${CLERK_AUTHORIZED_PARTIES:-http://localhost:3000}"
     ports:
       - "5080:8080"                   # host 5080 -> container 8080
     depends_on:

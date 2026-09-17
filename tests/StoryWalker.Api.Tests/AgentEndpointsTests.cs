@@ -16,7 +16,7 @@ namespace StoryWalker.Api.Tests;
 public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
 {
     private readonly StoryWalkerApiFactory _factory = factory;
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateClientAs("user_agent_tests");
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

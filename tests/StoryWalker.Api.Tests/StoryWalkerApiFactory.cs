@@ -1,8 +1,14 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Respawn;
 using StoryWalker.Application.Agent;
@@ -30,6 +36,55 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
     /// <summary>Records enqueued briefs so tests can assert the publish without a real Service Bus.</summary>
     public RecordingBriefPublisher Publisher { get; } = new();
 
+    /// <summary>Issuer the test tokens claim and the middleware is configured to accept.</summary>
+    public const string TestIssuer = "https://clerk.test.invalid";
+
+    /// <summary>The origin the test tokens carry as `azp`; the only authorized party in tests.</summary>
+    public const string TestAuthorizedParty = "http://localhost:3000";
+
+    // Symmetric, in-memory: the production middleware still validates the signature, it simply is
+    // not fetching a JWKS over the network. HS256 needs at least 256 bits of key material.
+    private static readonly SymmetricSecurityKey TestSigningKey = new(
+        Encoding.UTF8.GetBytes("story-walker-integration-tests-signing-key-0001")
+    );
+
+    /// <summary>Mints a Clerk-shaped session token: `sub`, `email` and `azp`, signed with the test key.</summary>
+    public static string CreateToken(
+        string clerkUserId,
+        string email = "test@storywalker.app",
+        string authorizedParty = TestAuthorizedParty
+    )
+    {
+        var token = new JwtSecurityToken(
+            issuer: TestIssuer,
+            claims:
+            [
+                new Claim("sub", clerkUserId),
+                new Claim("email", email),
+                new Claim("azp", authorizedParty),
+            ],
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: new SigningCredentials(
+                TestSigningKey,
+                SecurityAlgorithms.HmacSha256
+            )
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>A client authenticated as the given Clerk subject.</summary>
+    public HttpClient CreateClientAs(string clerkUserId, string email = "test@storywalker.app")
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            CreateToken(clerkUserId, email)
+        );
+
+        return client;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // "Testing" (not Development) so Program.cs's startup auto-migrate/seed block stays off —
@@ -50,10 +105,30 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
             "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
         );
 
+        // Clerk config so Program's guards pass. The authority is never dialled: the test services
+        // below null it out and hand the middleware an in-memory key instead.
+        builder.UseSetting("Clerk:Authority", TestIssuer);
+        builder.UseSetting("Clerk:AuthorizedParties", TestAuthorizedParty);
+
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IStoryAgent>(new FakeStoryAgent());
             services.AddSingleton<IBriefPublisher>(Publisher);
+
+            // Swap JWKS discovery for a local key. This runs after the app's own Configure delegate
+            // and before JwtBearer's post-configure, so clearing Authority stops a ConfigurationManager
+            // from ever being created — nothing leaves the process. Everything else about the
+            // middleware, including the azp check, is the production configuration.
+            services.Configure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme,
+                options =>
+                {
+                    options.Authority = null;
+                    options.RequireHttpsMetadata = false;
+                    options.TokenValidationParameters.IssuerSigningKey = TestSigningKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                }
+            );
         });
     }
 
