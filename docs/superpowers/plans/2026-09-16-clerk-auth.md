@@ -19,6 +19,9 @@
 - **`MapInboundClaims = false`** on the JWT bearer options, so `sub`, `azp` and `email` are readable under their JWT names rather than the WS-Federation URIs .NET maps them to by default.
 - **UI copy is in Italian.** Clerk components are localized with `itIT` from `@clerk/localizations`.
 - **Tests run offline.** No task may introduce a test that reaches the network.
+- **`ClockSkew` is 5 seconds**, never .NET's 5-minute default: Clerk session tokens live 60
+  seconds and cannot be revoked once issued, so the skew is added onto the post-sign-out
+  window.
 
 ### Manual Clerk dashboard setup (do this before Task 5)
 
@@ -190,7 +193,13 @@ public static class ClerkAuthentication
                     ValidIssuer = authority,
                     ValidateAudience = false,
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromSeconds(30),
+                    // Clerk session tokens live 60 seconds, and signing out cannot revoke one that
+                    // is already issued — it only stops the next one being minted. This tolerance
+                    // is therefore added straight onto the window in which a signed-out token still
+                    // works, so it stays small. .NET's default is 5 minutes, which would stretch a
+                    // 60-second token to six; raising it back "to be safe" widens exactly the gap
+                    // the short lifetime exists to close.
+                    ClockSkew = TimeSpan.FromSeconds(5),
                 };
 
                 options.Events = new JwtBearerEvents
