@@ -85,3 +85,8 @@ yarn-error.log*
 
 # Vitest browser-mode artefacts (failure screenshots)
 .vitest/
+
+# Claude Code scratch: linked worktrees and subagent-driven-development artifacts
+# (ledger, task briefs, review packages). Never part of the repository.
+.claude/worktrees/
+.superpowers/
