@@ -65,8 +65,15 @@ public sealed class FluxImageGenerator : IImageGenerator
     }
 
     /// <summary>
-    /// Maps a FLUX model id to its route path. Throws for anything else, so a misconfigured
-    /// deployment name stops the worker at startup instead of 404-ing on every page.
+    /// Whether <paramref name="model"/> is a FLUX deployment this generator can call. It is what
+    /// picks the route at startup: anything else belongs to the Azure OpenAI images route
+    /// (<see cref="AzureOpenAIImageGenerator"/>), which is the other half of what Foundry serves.
+    /// </summary>
+    public static bool CanHandle(string model) => RoutePaths.ContainsKey(model);
+
+    /// <summary>
+    /// Maps a FLUX model id to its route path. Throws for anything else, so a deployment routed here
+    /// by mistake fails at construction instead of 404-ing on every page.
     /// </summary>
     public static string RoutePathFor(string model) =>
         RoutePaths.TryGetValue(model, out var path)

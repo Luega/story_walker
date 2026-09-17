@@ -93,15 +93,18 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Registers the Foundry image deployment as an <see cref="IImageGenerator"/>. The deployment is a
-    /// Black Forest Labs FLUX model called through its provider route (<see cref="FluxImageGenerator"/>),
-    /// not <c>AzureOpenAIClient.GetImageClient</c>: that client targets
-    /// <c>/openai/deployments/{name}/images/generations</c>, which Foundry does not serve for FLUX.2 and
-    /// answers with 404.
+    /// Registers the Foundry image deployment as an <see cref="IImageGenerator"/>. Foundry serves two
+    /// mutually exclusive image routes and the deployment name is all we have to tell them apart: a
+    /// Black Forest Labs FLUX name goes to the BFL provider route (<see cref="FluxImageGenerator"/>),
+    /// anything else to the Azure OpenAI images route (<see cref="AzureOpenAIImageGenerator"/>).
+    /// Calling either route with the other's deployment answers 404.
+    /// <para>
+    /// Nothing above this line knows which one is behind it — <c>PageImageRenderer</c> sees only
+    /// <see cref="IImageGenerator"/> — so switching models is a configuration change.
+    /// </para>
     /// <para>
     /// Credentials follow the same rule as <see cref="AddFoundryChat"/>: an explicit key when supplied,
-    /// otherwise <see cref="DefaultAzureCredential"/>. The model name is validated here, at startup,
-    /// so a typo stops the worker immediately instead of failing every page of every story.
+    /// otherwise <see cref="DefaultAzureCredential"/>.
     /// </para>
     /// </summary>
     public static IServiceCollection AddFoundryImages(
@@ -111,22 +114,25 @@ public static class DependencyInjection
         string? apiKey = null
     )
     {
-        FluxImageGenerator.RoutePathFor(deployment);
+        var useFlux = FluxImageGenerator.CanHandle(deployment);
+        var clientName = useFlux ? nameof(FluxImageGenerator) : nameof(AzureOpenAIImageGenerator);
 
         // Measured against FLUX.2-pro on 2026-09-15: successful 1024x1024 renders answered in 8-10.5 s,
         // but 2 of 8 requests never answered at all and ran into the timeout. A hung request is
         // retried (the renderer treats a timeout as transient), so the ceiling decides what a hang
         // costs: 60 s, about six times the slowest success, instead of the minutes it would otherwise
         // burn per page.
-        services.AddHttpClient(nameof(FluxImageGenerator), http => http.Timeout = TimeSpan.FromSeconds(60));
+        services.AddHttpClient(clientName, http => http.Timeout = TimeSpan.FromSeconds(60));
 
-        services.AddSingleton<IImageGenerator>(sp => new FluxImageGenerator(
-            sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(FluxImageGenerator)),
-            endpoint,
-            deployment,
-            apiKey,
-            string.IsNullOrWhiteSpace(apiKey) ? new DefaultAzureCredential() : null
-        ));
+        services.AddSingleton<IImageGenerator>(sp =>
+        {
+            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(clientName);
+            var credential = string.IsNullOrWhiteSpace(apiKey) ? new DefaultAzureCredential() : null;
+
+            return useFlux
+                ? new FluxImageGenerator(http, endpoint, deployment, apiKey, credential)
+                : new AzureOpenAIImageGenerator(http, endpoint, deployment, apiKey, credential);
+        });
 
         return services;
     }
