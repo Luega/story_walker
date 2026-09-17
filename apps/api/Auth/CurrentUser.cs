@@ -64,16 +64,24 @@ public sealed class CurrentUser(IHttpContextAccessor accessor, StoryWalkerDbCont
         }
         catch (DbUpdateException)
         {
-            // Two first requests raced. The unique index on ClerkUserId picked a winner; read it
-            // and carry on, rather than failing a request that did nothing wrong.
+            // Someone else inserted this subject between our lookup and our write: the unique
+            // index on ClerkUserId picked a winner, so read it and carry on. If no row appeared,
+            // the insert failed for some other reason entirely (a dropped connection, an
+            // unrelated constraint) — rethrow rather than reinterpret it as a race and destroy the
+            // real exception.
             db.Entry(user).State = EntityState.Detached;
             var winner = await db
                 .Users.Where(u => u.ClerkUserId == clerkUserId)
-                .Select(u => u.Id)
-                .FirstAsync(ct);
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(ct);
 
-            _cached = winner;
-            return winner;
+            if (winner is not { } winnerId)
+            {
+                throw;
+            }
+
+            _cached = winnerId;
+            return winnerId;
         }
 
         _cached = user.Id;
