@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using StoryWalker.Application.Api;
 using StoryWalker.Domain.Enums;
-using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Api.Tests;
 
@@ -76,8 +75,6 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
     public async Task BriefReady_persists_generating_story_publishes_brief_and_returns_202()
     {
         await _factory.ResetAsync();
-        // Seeds the owner user the endpoint attributes the new story to (auth is deferred).
-        await _factory.ExecuteDbAsync(DbSeeder.SeedAsync);
 
         var response = await _client.PostAsJsonAsync(
             "/stories/conversations",

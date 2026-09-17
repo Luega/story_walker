@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using StoryWalker.Api.Auth;
 using StoryWalker.Application.Agent;
 using StoryWalker.Application.Api;
 using StoryWalker.Application.Brief;
@@ -40,6 +41,7 @@ public static class StoryEndpoints
                     IStoryAgent agent,
                     StoryWalkerDbContext db,
                     IBriefPublisher publisher,
+                    CurrentUser currentUser,
                     CancellationToken ct
                 ) =>
                 {
@@ -58,6 +60,10 @@ public static class StoryEndpoints
                     // conversation was purged) is a 404 so the client starts a fresh conversation.
                     try
                     {
+                        // Resolved on every turn, not just the brief-ready one: an interview that
+                        // never finishes must still provision the user (Task 2/ADR-0002).
+                        var me = await currentUser.GetIdAsync(ct);
+
                         var turn = await agent.SendAsync(
                             request.ConversationId,
                             request.Message.Trim(),
@@ -69,14 +75,7 @@ public static class StoryEndpoints
                         // ordinary conversational turn — echo the reply with 200.
                         if (turn is { BriefReady: true, Brief: not null })
                         {
-                            var story = await StartGenerationAsync(db, publisher, turn.Brief, ct);
-                            if (story is null)
-                            {
-                                return Results.Problem(
-                                    detail: "No user exists to own the story. Seed the database first.",
-                                    statusCode: StatusCodes.Status503ServiceUnavailable
-                                );
-                            }
+                            var story = await StartGenerationAsync(db, publisher, me, turn.Brief, ct);
 
                             return Results.Accepted(
                                 $"/stories/{story.Id}",
@@ -205,25 +204,15 @@ public static class StoryEndpoints
     /// Persists a <see cref="Story"/> in <see cref="StoryStatus.Generating"/> from the authored brief
     /// and enqueues that brief for the generation worker (ADR-0003). Only the story row is created
     /// here; the worker's <c>PersistPages</c> activity writes the pages.
-    /// Returns null when the database has no user to own the story.
     /// </summary>
-    private static async Task<Story?> StartGenerationAsync(
+    private static async Task<Story> StartGenerationAsync(
         StoryWalkerDbContext db,
         IBriefPublisher publisher,
+        Guid userId,
         GenerationBrief brief,
         CancellationToken ct
     )
     {
-        // Ownership: until Clerk auth lands (ADR-0002) there is no current user, so the story is
-        // owned by the single seeded user. DbSeeder only runs in Development, so in any other
-        // environment this is the first thing that goes wrong — and it would otherwise surface as
-        // an unhandled 500 on the very last turn of a conversation.
-        var userId = await db.Users.Select(u => u.Id).FirstOrDefaultAsync(ct);
-        if (userId == Guid.Empty)
-        {
-            return null;
-        }
-
         var story = new Story
         {
             Id = Guid.NewGuid(),

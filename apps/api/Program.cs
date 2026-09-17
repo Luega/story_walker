@@ -62,6 +62,9 @@ if (authorizedParties.Length == 0)
 
 builder.Services.AddClerkAuthentication(clerkAuthority, authorizedParties);
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<CurrentUser>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
