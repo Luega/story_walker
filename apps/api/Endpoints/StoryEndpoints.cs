@@ -111,17 +111,20 @@ public static class StoryEndpoints
         stories
             .MapGet(
                 "/",
-                async (StoryWalkerDbContext db) =>
+                async (StoryWalkerDbContext db, CurrentUser currentUser, CancellationToken ct) =>
                 {
+                    var me = await currentUser.GetIdAsync(ct);
+
                     var summaries = await db
-                        .Stories.OrderByDescending(s => s.CreatedAt)
+                        .Stories.Where(s => s.UserId == me)
+                        .OrderByDescending(s => s.CreatedAt)
                         .Select(s => new StorySummaryDto(
                             s.Id,
                             s.Title,
                             s.Status.ToString(),
                             s.CreatedAt
                         ))
-                        .ToListAsync();
+                        .ToListAsync(ct);
 
                     return Results.Ok(summaries);
                 }
@@ -131,12 +134,21 @@ public static class StoryEndpoints
         stories
             .MapGet(
                 "/{id:guid}",
-                async (Guid id, StoryWalkerDbContext db) =>
+                async (
+                    Guid id,
+                    StoryWalkerDbContext db,
+                    CurrentUser currentUser,
+                    CancellationToken ct
+                ) =>
                 {
+                    var me = await currentUser.GetIdAsync(ct);
+
+                    // Owner filter inside the same query, so another user's story is a 404 rather
+                    // than a 403: a 403 confirms the id exists, which the caller has no use for.
                     var story = await db
-                        .Stories.Where(s => s.Id == id)
+                        .Stories.Where(s => s.Id == id && s.UserId == me)
                         .Select(ToStoryDto)
-                        .FirstOrDefaultAsync();
+                        .FirstOrDefaultAsync(ct);
 
                     return story is null ? Results.NotFound() : Results.Ok(story);
                 }
@@ -146,7 +158,13 @@ public static class StoryEndpoints
         stories
             .MapPatch(
                 "/{id:guid}",
-                async (Guid id, UpdateStoryTitleRequest request, StoryWalkerDbContext db) =>
+                async (
+                    Guid id,
+                    UpdateStoryTitleRequest request,
+                    StoryWalkerDbContext db,
+                    CurrentUser currentUser,
+                    CancellationToken ct
+                ) =>
                 {
                     if (string.IsNullOrWhiteSpace(request.Title))
                     {
@@ -155,20 +173,24 @@ public static class StoryEndpoints
                         );
                     }
 
-                    var story = await db.Stories.FirstOrDefaultAsync(s => s.Id == id);
+                    var me = await currentUser.GetIdAsync(ct);
+                    var story = await db.Stories.FirstOrDefaultAsync(
+                        s => s.Id == id && s.UserId == me,
+                        ct
+                    );
                     if (story is null)
                     {
                         return Results.NotFound();
                     }
 
                     story.Title = request.Title.Trim();
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesAsync(ct);
 
                     // Re-project the saved story so the client gets the updated representation.
                     var updated = await db
-                        .Stories.Where(s => s.Id == id)
+                        .Stories.Where(s => s.Id == id && s.UserId == me)
                         .Select(ToStoryDto)
-                        .FirstAsync();
+                        .FirstAsync(ct);
 
                     return Results.Ok(updated);
                 }
@@ -178,9 +200,18 @@ public static class StoryEndpoints
         stories
             .MapDelete(
                 "/{id:guid}",
-                async (Guid id, StoryWalkerDbContext db) =>
+                async (
+                    Guid id,
+                    StoryWalkerDbContext db,
+                    CurrentUser currentUser,
+                    CancellationToken ct
+                ) =>
                 {
-                    var story = await db.Stories.FirstOrDefaultAsync(s => s.Id == id);
+                    var me = await currentUser.GetIdAsync(ct);
+                    var story = await db.Stories.FirstOrDefaultAsync(
+                        s => s.Id == id && s.UserId == me,
+                        ct
+                    );
                     if (story is null)
                     {
                         return Results.NotFound();
@@ -190,7 +221,7 @@ public static class StoryEndpoints
 
                     // Pages cascade (StoryConfiguration). Nothing else references a story: every
                     // story is self-contained (ADR-0019), so the delete cannot conflict.
-                    await db.SaveChangesAsync();
+                    await db.SaveChangesAsync(ct);
 
                     return Results.NoContent();
                 }

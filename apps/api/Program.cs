@@ -75,12 +75,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    // Apply the latest migration and seed demo data so the API is usable straight after a fresh
-    // `docker compose up`. Development only — production migrates through a deliberate pipeline.
+    // Apply the latest migration so the API is usable straight after a fresh `docker compose up`.
+    // Development only — production migrates through a deliberate pipeline. Nothing is seeded: with
+    // per-user ownership (ADR-0002) a demo story belongs to no real account, so a first sign-in
+    // starts on an empty dashboard by design.
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<StoryWalkerDbContext>();
     await db.Database.MigrateAsync();
-    await DbSeeder.SeedAsync(db);
 }
 
 app.UseAuthentication();

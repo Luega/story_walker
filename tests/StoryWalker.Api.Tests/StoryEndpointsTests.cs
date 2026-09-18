@@ -30,7 +30,10 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     public async Task GetStories_returns_seeded_summary()
     {
         await _factory.ResetAsync();
-        await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
+        var mineId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_story_tests")
+        );
+        await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, mineId));
 
         var summaries = await _client.GetFromJsonAsync<List<StorySummaryDto>>("/stories", Ct);
 
@@ -44,7 +47,10 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     public async Task GetStory_returns_full_story_with_pages()
     {
         await _factory.ResetAsync();
-        var storyId = await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
+        var mineId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_story_tests")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, mineId));
 
         var story = await _client.GetFromJsonAsync<StoryDto>($"/stories/{storyId}", Ct);
 
@@ -69,7 +75,10 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     public async Task PatchStory_updates_title_and_trims_whitespace()
     {
         await _factory.ResetAsync();
-        var storyId = await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
+        var mineId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_story_tests")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, mineId));
 
         var response = await _client.PatchAsJsonAsync(
             $"/stories/{storyId}",
@@ -93,7 +102,10 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     public async Task PatchStory_empty_title_returns_400()
     {
         await _factory.ResetAsync();
-        var storyId = await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
+        var mineId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_story_tests")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, mineId));
 
         var response = await _client.PatchAsJsonAsync(
             $"/stories/{storyId}",
@@ -122,7 +134,10 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
     public async Task DeleteStory_removes_story_and_cascades_pages_but_keeps_the_user()
     {
         await _factory.ResetAsync();
-        var storyId = await _factory.ExecuteDbAsync(SeedData.SeedDemoStoryAsync);
+        var mineId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_story_tests")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, mineId));
 
         var response = await _client.DeleteAsync($"/stories/{storyId}", Ct);
 
@@ -144,5 +159,79 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
         var response = await _client.DeleteAsync($"/stories/{Guid.NewGuid()}", Ct);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetStories_excludes_other_users_stories()
+    {
+        await _factory.ResetAsync();
+        var strangerId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_stranger")
+        );
+        await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, strangerId));
+
+        var summaries = await _client.GetFromJsonAsync<List<StorySummaryDto>>("/stories", Ct);
+
+        Assert.NotNull(summaries);
+        Assert.Empty(summaries);
+    }
+
+    [Fact]
+    public async Task GetStory_of_another_user_returns_404()
+    {
+        await _factory.ResetAsync();
+        var strangerId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_stranger")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedDemoStoryAsync(db, strangerId)
+        );
+
+        var response = await _client.GetAsync($"/stories/{storyId}", Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PatchStory_of_another_user_returns_404_and_does_not_rename()
+    {
+        await _factory.ResetAsync();
+        var strangerId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_stranger")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedDemoStoryAsync(db, strangerId)
+        );
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/stories/{storyId}",
+            new UpdateStoryTitleRequest("Hijacked"),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var title = await _factory.ExecuteDbAsync(db =>
+            db.Stories.Where(s => s.Id == storyId).Select(s => s.Title).SingleAsync(Ct)
+        );
+        Assert.NotEqual("Hijacked", title);
+    }
+
+    [Fact]
+    public async Task DeleteStory_of_another_user_returns_404_and_keeps_the_story()
+    {
+        await _factory.ResetAsync();
+        var strangerId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_stranger")
+        );
+        var storyId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedDemoStoryAsync(db, strangerId)
+        );
+
+        var response = await _client.DeleteAsync($"/stories/{storyId}", Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(
+            await _factory.ExecuteDbAsync(db => db.Stories.AnyAsync(s => s.Id == storyId, Ct))
+        );
     }
 }

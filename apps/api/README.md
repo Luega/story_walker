@@ -2,8 +2,9 @@
 
 The ASP.NET Core Web API: owns the domain data (PostgreSQL), runs the information-gathering agent
 (Microsoft Foundry), and enqueues generation jobs on Azure Service Bus (fire-and-forget, returns
-`202`). References the shared libraries in [`../../src`](../../src). Authentication (Clerk,
-ADR-0002) is not wired yet: every story is owned by the seeded demo user.
+`202`). References the shared libraries in [`../../src`](../../src). Every `/stories` route
+requires a Clerk session token (ADR-0002). A story belongs to the caller who started it, and another
+user's story answers `404`, exactly like one that does not exist.
 
 ## Configuration
 
@@ -50,19 +51,22 @@ dotnet run --project apps/api      # build + run the API on the host
 docker compose --profile api up --build
 ```
 
-In both modes, on startup in **Development** the API applies the latest EF Core migration and
-seeds demo data (idempotent), then serves:
+In both modes, on startup in **Development** the API applies the latest EF Core migration, then
+serves. Nothing is seeded: a demo story would belong to no real account, so a first sign-in starts on
+an empty dashboard.
 
 - Swagger UI — <http://localhost:5080/swagger> (same port on the host and in Docker)
 
 | Method & route | Purpose | Responses |
 | --- | --- | --- |
 | `GET /health` | Liveness probe | `200` `"healthy"` |
-| `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `502` unusable brief, `503` no user to own the story |
-| `GET /stories` | Story summaries | `200` |
-| `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` |
-| `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` |
-| `DELETE /stories/{id}` | Delete a story (pages cascade) | `204`, `404` |
+| `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `502` unusable brief |
+| `GET /stories` | The caller's story summaries | `200` |
+| `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` unknown or not yours |
+| `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` unknown or not yours |
+| `DELETE /stories/{id}` | Delete a story (pages cascade) | `204`, `404` unknown or not yours |
+
+Every `/stories` route answers `401` without a valid token.
 
 `PATCH` takes `{ "title": "..." }` and returns the updated story.
 
