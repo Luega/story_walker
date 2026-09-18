@@ -30,9 +30,9 @@ export function ConfirmDeleteDialog({
       onCancel={(e) => busy && e.preventDefault()}
       className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
     >
-      <h2 className="font-display text-xl font-semibold">Eliminare la storia?</h2>
+      <h2 className="font-display text-xl font-semibold">Delete this story?</h2>
       <p className="mt-2 leading-relaxed text-muted">
-        «{title}» verrà eliminata insieme a tutte le sue pagine. L&apos;azione è irreversibile.
+        “{title}” will be deleted along with all its pages. This cannot be undone.
       </p>
 
       <div className="mt-6 flex justify-end gap-2">
@@ -43,7 +43,7 @@ export function ConfirmDeleteDialog({
           autoFocus
           className="rounded-xl border border-border px-4 py-2.5 font-semibold disabled:opacity-50"
         >
-          Annulla
+          Cancel
         </button>
         <button
           type="button"
@@ -51,7 +51,7 @@ export function ConfirmDeleteDialog({
           disabled={busy}
           className="rounded-xl bg-red-700 px-4 py-2.5 font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
         >
-          {busy ? "Eliminazione…" : "Elimina"}
+          {busy ? "Deleting…" : "Delete"}
         </button>
       </div>
     </dialog>

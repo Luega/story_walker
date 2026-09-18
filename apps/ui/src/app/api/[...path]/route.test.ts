@@ -48,13 +48,13 @@ describe("API proxy route", () => {
       new Request("http://localhost:3000/api/stories/conversations", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: "ciao" }),
+        body: JSON.stringify({ message: "hello" }),
       }),
       params("stories", "conversations"),
     );
 
     const [, init] = vi.mocked(fetch).mock.calls[0];
-    expect(init!.body).toBe('{"message":"ciao"}');
+    expect(init!.body).toBe('{"message":"hello"}');
   });
 
   it("fails closed when there is no session", async () => {

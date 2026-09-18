@@ -27,18 +27,18 @@ beforeEach(() => push.mockClear());
 
 describe("listing", () => {
   it("shows the stories the API returns", async () => {
-    serveStories(aStorySummary({ title: "La luna curiosa" }), aStorySummary({ title: "Il bosco" }));
+    serveStories(aStorySummary({ title: "The Curious Moon" }), aStorySummary({ title: "The Woods" }));
     render(<DashboardPage />);
 
-    expect(await screen.findByRole("link", { name: "La luna curiosa" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Il bosco" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "The Curious Moon" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "The Woods" })).toBeInTheDocument();
   });
 
   it("invites the user to start when there are no stories", async () => {
     serveStories();
     render(<DashboardPage />);
 
-    expect(await screen.findByText(/Nessuna storia ancora/)).toBeInTheDocument();
+    expect(await screen.findByText(/No stories yet/)).toBeInTheDocument();
   });
 
   it("reports a failure to load", async () => {
@@ -51,17 +51,17 @@ describe("listing", () => {
   it("opens the new-story modal", async () => {
     serveStories();
     render(<DashboardPage />);
-    await screen.findByText(/Nessuna storia ancora/);
+    await screen.findByText(/No stories yet/);
 
-    await userEvent.click(screen.getByRole("button", { name: "+ Nuova storia" }));
+    await userEvent.click(screen.getByRole("button", { name: "+ New story" }));
 
-    expect(screen.getByRole("heading", { name: "Nuova storia" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "New story" })).toBeInTheDocument();
   });
 });
 
 describe("deleting a story", () => {
   it("asks for confirmation, then removes the card without reloading the list", async () => {
-    const story = aStorySummary({ title: "Da eliminare" });
+    const story = aStorySummary({ title: "To delete" });
     const list = serveStories(story);
     let deleted: string | null = null;
     worker.use(
@@ -71,32 +71,32 @@ describe("deleting a story", () => {
       }),
     );
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "Da eliminare" });
+    await screen.findByRole("link", { name: "To delete" });
 
-    await userEvent.click(screen.getByRole("button", { name: "Elimina «Da eliminare»" }));
-    await userEvent.click(screen.getByRole("button", { name: "Elimina" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete “To delete”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
-    await waitFor(() => expect(screen.queryByText("Da eliminare")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("To delete")).not.toBeInTheDocument());
     expect(deleted).toBe(story.id);
     // The list is dropped locally; refetching would be a wasted round trip.
     expect(list.calls).toBe(1);
   });
 
   it("keeps the story and explains why when the delete fails", async () => {
-    serveStories(aStorySummary({ title: "Resiste" }));
+    serveStories(aStorySummary({ title: "Stubborn" }));
     worker.use(http.delete("/api/stories/:id", () => new HttpResponse(null, { status: 500 })));
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "Resiste" });
+    await screen.findByRole("link", { name: "Stubborn" });
 
-    await userEvent.click(screen.getByRole("button", { name: "Elimina «Resiste»" }));
-    await userEvent.click(screen.getByRole("button", { name: "Elimina" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete “Stubborn”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/500/);
-    expect(screen.getByRole("link", { name: "Resiste" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Stubborn" })).toBeInTheDocument();
   });
 
   it("leaves the story alone when the confirmation is dismissed", async () => {
-    serveStories(aStorySummary({ title: "Salva" }));
+    serveStories(aStorySummary({ title: "Kept" }));
     let deleteCalls = 0;
     worker.use(
       http.delete("/api/stories/:id", () => {
@@ -105,19 +105,19 @@ describe("deleting a story", () => {
       }),
     );
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "Salva" });
+    await screen.findByRole("link", { name: "Kept" });
 
-    await userEvent.click(screen.getByRole("button", { name: "Elimina «Salva»" }));
-    await userEvent.click(screen.getByRole("button", { name: "Annulla" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete “Kept”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(deleteCalls).toBe(0);
-    expect(screen.getByRole("link", { name: "Salva" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kept" })).toBeInTheDocument();
   });
 });
 
 describe("renaming a story", () => {
   it("sends one PATCH and shows the title the server stored", async () => {
-    const story = aStorySummary({ title: "Titolo vecchio" });
+    const story = aStorySummary({ title: "Old title" });
     serveStories(story);
     const patches: unknown[] = [];
     worker.use(
@@ -126,39 +126,39 @@ describe("renaming a story", () => {
         // The server trims; the dashboard must display this, not the raw input.
         return HttpResponse.json({
           ...story,
-          title: "Titolo nuovo",
+          title: "New title",
           targetAge: 5,
-          artStyle: "acquerello",
+          artStyle: "watercolour",
           pages: [],
         });
       }),
     );
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "Titolo vecchio" });
+    await screen.findByRole("link", { name: "Old title" });
 
-    await userEvent.click(screen.getByRole("button", { name: "Rinomina «Titolo vecchio»" }));
-    const input = screen.getByRole("textbox", { name: "Titolo della storia" });
-    await userEvent.fill(input, "  Titolo nuovo  ");
+    await userEvent.click(screen.getByRole("button", { name: "Rename “Old title”" }));
+    const input = screen.getByRole("textbox", { name: "Story title" });
+    await userEvent.fill(input, "  New title  ");
     await userEvent.keyboard("{Enter}");
 
-    expect(await screen.findByRole("link", { name: "Titolo nuovo" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "New title" })).toBeInTheDocument();
     // One request, not two: the blur fired by disabling the input must not send a second PATCH.
-    expect(patches).toEqual([{ title: "Titolo nuovo" }]);
+    expect(patches).toEqual([{ title: "New title" }]);
   });
 
   it("reports a failed rename and keeps the edit open", async () => {
-    serveStories(aStorySummary({ title: "Titolo vecchio" }));
+    serveStories(aStorySummary({ title: "Old title" }));
     worker.use(http.patch("/api/stories/:id", () => new HttpResponse(null, { status: 500 })));
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "Titolo vecchio" });
+    await screen.findByRole("link", { name: "Old title" });
 
-    await userEvent.click(screen.getByRole("button", { name: "Rinomina «Titolo vecchio»" }));
-    const input = screen.getByRole("textbox", { name: "Titolo della storia" });
-    await userEvent.fill(input, "Titolo nuovo");
+    await userEvent.click(screen.getByRole("button", { name: "Rename “Old title”" }));
+    const input = screen.getByRole("textbox", { name: "Story title" });
+    await userEvent.fill(input, "New title");
     await userEvent.keyboard("{Enter}");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/500/);
-    expect(screen.getByRole("textbox", { name: "Titolo della storia" })).toHaveValue("Titolo nuovo");
+    expect(screen.getByRole("textbox", { name: "Story title" })).toHaveValue("New title");
   });
 });
 
@@ -174,9 +174,9 @@ describe("polling", () => {
   }, 10_000);
 
   it("stops refreshing once nothing is generating", async () => {
-    const list = serveStories(aStorySummary({ status: "Complete", title: "Finita" }));
+    const list = serveStories(aStorySummary({ status: "Complete", title: "Finished" }));
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "Finita" });
+    await screen.findByRole("link", { name: "Finished" });
 
     await new Promise((r) => setTimeout(r, 6000));
 

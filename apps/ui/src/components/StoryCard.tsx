@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { StorySummary } from "@/lib/api";
 import { StatusBadge } from "./StatusBadge";
 
-const dateFormat = new Intl.DateTimeFormat("it-IT", { dateStyle: "medium" });
+const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
 
 /**
  * The link covers the whole card through an ::after overlay rather than wrapping it, so the action
@@ -79,7 +79,7 @@ export function StoryCard({
             onBlur={() => void save()}
             disabled={saving}
             autoFocus
-            aria-label="Titolo della storia"
+            aria-label="Story title"
             className="w-full rounded-lg border border-accent bg-background px-2 py-1 font-display text-xl font-semibold text-foreground outline-none disabled:opacity-60"
           />
         ) : (
@@ -97,8 +97,8 @@ export function StoryCard({
           <button
             type="button"
             onClick={startEditing}
-            aria-label={`Rinomina «${story.title}»`}
-            title="Rinomina"
+            aria-label={`Rename “${story.title}”`}
+            title="Rename"
             className="rounded-full p-2 text-muted opacity-100 transition hover:bg-background hover:text-accent focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           >
             <svg
@@ -118,8 +118,8 @@ export function StoryCard({
           <button
             type="button"
             onClick={() => onDelete(story)}
-            aria-label={`Elimina «${story.title}»`}
-            title="Elimina"
+            aria-label={`Delete “${story.title}”`}
+            title="Delete"
             className="rounded-full p-2 text-muted opacity-100 transition hover:bg-red-100 hover:text-red-700 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           >
             <svg

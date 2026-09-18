@@ -76,15 +76,15 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">Le tue storie</h1>
-          <p className="mt-1 text-muted">Scegli una storia da leggere o creane una nuova.</p>
+          <h1 className="font-display text-4xl font-semibold tracking-tight">Your stories</h1>
+          <p className="mt-1 text-muted">Pick a story to read, or create a new one.</p>
         </div>
         <button
           type="button"
           onClick={() => setModalOpen(true)}
           className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105"
         >
-          + Nuova storia
+          + New story
         </button>
       </div>
 
@@ -94,11 +94,11 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {stories === null && !error && <p className="text-muted">Caricamento…</p>}
+      {stories === null && !error && <p className="text-muted">Loading…</p>}
 
       {stories?.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center text-muted">
-          Nessuna storia ancora. Premi <strong>Nuova storia</strong> per iniziare.
+          No stories yet. Press <strong>New story</strong> to get started.
         </div>
       )}
 

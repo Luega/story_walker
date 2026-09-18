@@ -34,29 +34,29 @@ describe("the conversation", () => {
   it("greets the user with a prompt about what to write", () => {
     renderModal();
 
-    expect(screen.getByText(/Raccontami che storia vorresti/)).toBeInTheDocument();
+    expect(screen.getByText(/Tell me about the story you'd like/)).toBeInTheDocument();
   });
 
   it("shows the user's message and the agent's reply", async () => {
-    agentReplies("Che bella idea!");
+    agentReplies("What a lovely idea!");
     const { input } = renderModal();
 
-    await userEvent.fill(input, "un drago gentile");
+    await userEvent.fill(input, "a kind dragon");
     await userEvent.keyboard("{Enter}");
 
-    expect(await screen.findByText("Che bella idea!")).toBeInTheDocument();
-    expect(screen.getByText("un drago gentile")).toBeInTheDocument();
+    expect(await screen.findByText("What a lovely idea!")).toBeInTheDocument();
+    expect(screen.getByText("a kind dragon")).toBeInTheDocument();
   });
 
   it("carries the conversation id into the next turn", async () => {
-    const turns = agentReplies("Continua pure", "conv-42");
+    const turns = agentReplies("Go on", "conv-42");
     const { input } = renderModal();
 
-    await userEvent.fill(input, "primo");
+    await userEvent.fill(input, "first");
     await userEvent.keyboard("{Enter}");
-    await screen.findByText("Continua pure");
+    await screen.findByText("Go on");
 
-    await userEvent.fill(screen.getByRole("textbox"), "secondo");
+    await userEvent.fill(screen.getByRole("textbox"), "second");
     await userEvent.keyboard("{Enter}");
 
     await vi.waitFor(() => expect(turns).toHaveLength(2));
@@ -65,27 +65,27 @@ describe("the conversation", () => {
   });
 
   it("treats Shift+Enter as a newline rather than a send", async () => {
-    const turns = agentReplies("mai chiamato");
+    const turns = agentReplies("never called");
     const { input } = renderModal();
 
-    await userEvent.fill(input, "prima riga");
+    await userEvent.fill(input, "first line");
     await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
 
     expect(turns).toHaveLength(0);
-    expect(screen.getByRole("textbox")).toHaveValue("prima riga\n");
+    expect(screen.getByRole("textbox")).toHaveValue("first line\n");
   });
 
   it("cannot be sent while the message is blank", async () => {
-    agentReplies("mai chiamato");
+    agentReplies("never called");
     const { input } = renderModal();
-    const send = () => screen.getByRole("button", { name: "Invia" });
+    const send = () => screen.getByRole("button", { name: "Send" });
 
     expect(send()).toBeDisabled();
 
     await userEvent.fill(input, "   ");
     expect(send()).toBeDisabled();
 
-    await userEvent.fill(input, "un drago");
+    await userEvent.fill(input, "a dragon");
     expect(send()).toBeEnabled();
   });
 });
@@ -99,7 +99,7 @@ describe("when the brief is ready", () => {
     );
     const { input } = renderModal();
 
-    await userEvent.fill(input, "sì, confermo");
+    await userEvent.fill(input, "yes, confirm");
     await userEvent.keyboard("{Enter}");
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/stories/story-7"));
@@ -111,28 +111,28 @@ describe("when something goes wrong", () => {
     worker.use(http.post(CONVERSATIONS, () => new HttpResponse(null, { status: 404 })));
     const { input } = renderModal();
 
-    await userEvent.fill(input, "ci sei?");
+    await userEvent.fill(input, "are you there?");
     await userEvent.keyboard("{Enter}");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/ricominciamo da capo/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/start over/);
     // The transcript is reset to the greeting, so the user is not replying into a dead conversation.
-    expect(screen.getByText(/Raccontami che storia vorresti/)).toBeInTheDocument();
-    expect(screen.queryByText("ci sei?")).not.toBeInTheDocument();
+    expect(screen.getByText(/Tell me about the story you'd like/)).toBeInTheDocument();
+    expect(screen.queryByText("are you there?")).not.toBeInTheDocument();
   });
 
   it("gives the typed message back so it is not lost", async () => {
     worker.use(
       http.post(CONVERSATIONS, () =>
-        HttpResponse.json({ detail: "Brief non valido." }, { status: 502 }),
+        HttpResponse.json({ detail: "Invalid brief." }, { status: 502 }),
       ),
     );
     const { input } = renderModal();
 
-    await userEvent.fill(input, "un drago gentile");
+    await userEvent.fill(input, "a kind dragon");
     await userEvent.keyboard("{Enter}");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Brief non valido.");
-    expect(screen.getByRole("textbox")).toHaveValue("un drago gentile");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid brief.");
+    expect(screen.getByRole("textbox")).toHaveValue("a kind dragon");
   });
 });
 
@@ -140,7 +140,7 @@ describe("closing", () => {
   it("closes from the header button", async () => {
     const { onClose } = renderModal();
 
-    await userEvent.click(screen.getByRole("button", { name: "Chiudi" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
     expect(onClose).toHaveBeenCalledOnce();
   });

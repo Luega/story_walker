@@ -9,7 +9,7 @@ const nextId = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}
 export function aStorySummary(overrides: Partial<StorySummary> = {}): StorySummary {
   return {
     id: nextId(),
-    title: "Il drago gentile",
+    title: "The Kind Dragon",
     status: "Complete",
     createdAt: "2026-09-01T10:00:00Z",
     ...overrides,
@@ -19,7 +19,7 @@ export function aStorySummary(overrides: Partial<StorySummary> = {}): StorySumma
 export function aPage(overrides: Partial<Page> = {}): Page {
   return {
     pageNo: 1,
-    content: "C'era una volta un drago che aveva paura del buio.",
+    content: "Once upon a time there was a dragon who was afraid of the dark.",
     imageUrl: "https://example.test/page-1.png",
     status: "Complete",
     ...overrides,
@@ -29,10 +29,10 @@ export function aPage(overrides: Partial<Page> = {}): Page {
 export function aStory(overrides: Partial<Story> = {}): Story {
   return {
     id: nextId(),
-    title: "Il drago gentile",
+    title: "The Kind Dragon",
     targetAge: 5,
     status: "Complete",
-    artStyle: "acquerello",
+    artStyle: "watercolour",
     pages: [aPage({ pageNo: 1 }), aPage({ pageNo: 2 })],
     ...overrides,
   };

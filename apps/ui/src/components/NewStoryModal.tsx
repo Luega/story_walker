@@ -11,7 +11,7 @@ interface Message {
 
 const GREETING: Message = {
   role: "assistant",
-  text: "Ciao! Raccontami che storia vorresti: chi sono i protagonisti, dove si svolge e per che età è pensata.",
+  text: "Hi! Tell me about the story you'd like: who the main characters are, where it takes place, and what age it's for.",
 };
 
 /**
@@ -60,7 +60,7 @@ export function NewStoryModal({ onClose }: { onClose: () => void }) {
       case "notFound":
         setConversationId(null);
         setMessages([GREETING]);
-        setError("La conversazione è scaduta: ricominciamo da capo.");
+        setError("The conversation expired — let's start over.");
         break;
       case "error":
         setError(turn.detail);
@@ -83,12 +83,12 @@ export function NewStoryModal({ onClose }: { onClose: () => void }) {
       className="m-auto flex h-[min(40rem,90vh)] w-[min(40rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
     >
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="font-display text-xl font-semibold">Nuova storia</h2>
+        <h2 className="font-display text-xl font-semibold">New story</h2>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
           className="rounded-full px-2 text-2xl leading-none text-muted hover:text-foreground"
-          aria-label="Chiudi"
+          aria-label="Close"
         >
           ×
         </button>
@@ -110,7 +110,7 @@ export function NewStoryModal({ onClose }: { onClose: () => void }) {
         ))}
         {sending && (
           <p className="text-sm italic text-muted" aria-live="polite">
-            L&apos;agente sta scrivendo…
+            The agent is typing…
           </p>
         )}
         <div ref={bottomRef} />
@@ -130,7 +130,7 @@ export function NewStoryModal({ onClose }: { onClose: () => void }) {
           disabled={sending}
           rows={2}
           autoFocus
-          placeholder="Scrivi un messaggio…"
+          placeholder="Write a message…"
           className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 outline-none focus:border-accent disabled:opacity-60"
         />
         <button
@@ -138,7 +138,7 @@ export function NewStoryModal({ onClose }: { onClose: () => void }) {
           disabled={sending || !input.trim()}
           className="rounded-xl bg-accent px-4 py-2.5 font-semibold text-accent-foreground disabled:opacity-50"
         >
-          Invia
+          Send
         </button>
       </form>
     </dialog>

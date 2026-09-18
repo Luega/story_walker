@@ -12,7 +12,7 @@ import {
 
 describe("listStories", () => {
   it("returns the summaries the API sends", async () => {
-    const summary = aStorySummary({ title: "La luna curiosa" });
+    const summary = aStorySummary({ title: "The Curious Moon" });
     worker.use(http.get("/api/stories", () => HttpResponse.json([summary])));
 
     await expect(listStories()).resolves.toEqual([summary]);
@@ -64,7 +64,7 @@ describe("getStory", () => {
 
 describe("renameStory", () => {
   it("PATCHes the new title to the story's URL", async () => {
-    const story = aStory({ title: "Nuovo titolo" });
+    const story = aStory({ title: "New title" });
     let method: string | undefined;
     let body: unknown;
     worker.use(
@@ -75,24 +75,24 @@ describe("renameStory", () => {
       }),
     );
 
-    await renameStory(story.id, "Nuovo titolo");
+    await renameStory(story.id, "New title");
 
     expect(method).toBe("PATCH");
-    expect(body).toEqual({ title: "Nuovo titolo" });
+    expect(body).toEqual({ title: "New title" });
   });
 
   it("returns the title as the server stored it, not the one we sent", async () => {
     // The API trims; a client that echoed its own input would hide that from the user.
-    const story = aStory({ title: "Titolo pulito" });
+    const story = aStory({ title: "Clean title" });
     worker.use(http.patch("/api/stories/:id", () => HttpResponse.json(story)));
 
-    await expect(renameStory(story.id, "  Titolo pulito  ")).resolves.toBe("Titolo pulito");
+    await expect(renameStory(story.id, "  Clean title  ")).resolves.toBe("Clean title");
   });
 
   it("reports a missing story", async () => {
     worker.use(http.patch("/api/stories/:id", () => new HttpResponse(null, { status: 404 })));
 
-    await expect(renameStory("missing", "x")).rejects.toThrow("Storia non trovata.");
+    await expect(renameStory("missing", "x")).rejects.toThrow("Story not found.");
   });
 
   it("reports a rejected title", async () => {
@@ -134,14 +134,14 @@ describe("sendAgentMessage", () => {
   it("returns the agent's reply and the conversation id", async () => {
     worker.use(
       http.post("/api/stories/conversations", () =>
-        HttpResponse.json({ conversationId: "conv-1", reply: "Che bella idea!", briefReady: false }),
+        HttpResponse.json({ conversationId: "conv-1", reply: "What a lovely idea!", briefReady: false }),
       ),
     );
 
-    await expect(sendAgentMessage(null, "ciao")).resolves.toEqual({
+    await expect(sendAgentMessage(null, "hello")).resolves.toEqual({
       kind: "reply",
       conversationId: "conv-1",
-      reply: "Che bella idea!",
+      reply: "What a lovely idea!",
     });
   });
 
@@ -154,9 +154,9 @@ describe("sendAgentMessage", () => {
       }),
     );
 
-    await sendAgentMessage("conv-1", "  un drago  ");
+    await sendAgentMessage("conv-1", "  a dragon  ");
 
-    expect(body).toEqual({ conversationId: "conv-1", message: "  un drago  " });
+    expect(body).toEqual({ conversationId: "conv-1", message: "  a dragon  " });
   });
 
   it("reports a queued story when the brief is ready (202)", async () => {
@@ -166,7 +166,7 @@ describe("sendAgentMessage", () => {
       ),
     );
 
-    await expect(sendAgentMessage("conv-1", "sì")).resolves.toEqual({
+    await expect(sendAgentMessage("conv-1", "yes")).resolves.toEqual({
       kind: "queued",
       storyId: "story-9",
     });
@@ -177,28 +177,28 @@ describe("sendAgentMessage", () => {
       http.post("/api/stories/conversations", () => new HttpResponse(null, { status: 404 })),
     );
 
-    await expect(sendAgentMessage("gone", "ciao")).resolves.toEqual({ kind: "notFound" });
+    await expect(sendAgentMessage("gone", "hello")).resolves.toEqual({ kind: "notFound" });
   });
 
   it("surfaces the ProblemDetails message from a failed turn", async () => {
     worker.use(
       http.post("/api/stories/conversations", () =>
-        HttpResponse.json({ detail: "Brief non valido." }, { status: 502 }),
+        HttpResponse.json({ detail: "Invalid brief." }, { status: 502 }),
       ),
     );
 
-    await expect(sendAgentMessage("conv-1", "sì")).resolves.toEqual({
+    await expect(sendAgentMessage("conv-1", "yes")).resolves.toEqual({
       kind: "error",
-      detail: "Brief non valido.",
+      detail: "Invalid brief.",
     });
   });
 
   it("reports a network failure instead of throwing at the caller", async () => {
     worker.use(http.post("/api/stories/conversations", () => HttpResponse.error()));
 
-    await expect(sendAgentMessage(null, "ciao")).resolves.toEqual({
+    await expect(sendAgentMessage(null, "hello")).resolves.toEqual({
       kind: "error",
-      detail: "Impossibile raggiungere il server.",
+      detail: "Could not reach the server.",
     });
   });
 });

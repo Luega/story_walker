@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
-import { itIT } from "@clerk/localizations";
 import { Fraunces, Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -17,18 +16,18 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: "Story Walker",
-  description: "Storie illustrate per bambini, create insieme a un agente.",
+  description: "Illustrated stories for children, created together with an agent.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="it"
+      lang="en"
       className={`${fraunces.variable} ${nunito.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
         {/* Clerk Core 3 wants the provider inside <body>, not wrapping <html>. */}
-        <ClerkProvider localization={itIT}>
+        <ClerkProvider>
           <header className="border-b border-border">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
               {/* The wordmark leads home: the landing for visitors, the dashboard once signed in. */}
@@ -49,18 +48,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 {/* <Show> replaced <SignedIn>/<SignedOut> in Clerk Core 3; the old ones throw. */}
                 <Show when="signed-out">
                   <Link href="/sign-in" className="text-sm font-semibold hover:text-accent">
-                    Accedi
+                    Sign in
                   </Link>
                   <Link
                     href="/sign-up"
                     className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:brightness-105"
                   >
-                    Registrati
+                    Sign up
                   </Link>
                 </Show>
                 <Show when="signed-in">
                   <Link href="/dashboard" className="text-sm font-semibold hover:text-accent">
-                    Le tue storie
+                    Your stories
                   </Link>
                   <UserButton />
                 </Show>

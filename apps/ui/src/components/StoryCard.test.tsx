@@ -25,28 +25,28 @@ function renderCard({
   render(<StoryCard story={story} onDelete={onDelete} onRename={onRename} />);
 
   const rename = () =>
-    userEvent.click(screen.getByRole("button", { name: `Rinomina «${story.title}»` }));
+    userEvent.click(screen.getByRole("button", { name: `Rename “${story.title}”` }));
 
   return { story, onDelete, onRename, rename };
 }
 
-const titleInput = () => screen.getByRole("textbox", { name: "Titolo della storia" });
+const titleInput = () => screen.getByRole("textbox", { name: "Story title" });
 
 describe("reading", () => {
   it("links to the story", () => {
-    const { story } = renderCard({ title: "La luna curiosa" });
+    const { story } = renderCard({ title: "The Curious Moon" });
 
-    expect(screen.getByRole("link", { name: "La luna curiosa" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "The Curious Moon" })).toHaveAttribute(
       "href",
       `/stories/${story.id}`,
     );
   });
 
   it("names its actions after the story, so they are distinguishable in a list", () => {
-    renderCard({ title: "La luna curiosa" });
+    renderCard({ title: "The Curious Moon" });
 
-    expect(screen.getByRole("button", { name: "Rinomina «La luna curiosa»" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Elimina «La luna curiosa»" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rename “The Curious Moon”" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete “The Curious Moon”" })).toBeInTheDocument();
   });
 });
 
@@ -54,7 +54,7 @@ describe("deleting", () => {
   it("reports the story to delete without deciding anything itself", async () => {
     const { story, onDelete } = renderCard();
 
-    await userEvent.click(screen.getByRole("button", { name: `Elimina «${story.title}»` }));
+    await userEvent.click(screen.getByRole("button", { name: `Delete “${story.title}”` }));
 
     expect(onDelete).toHaveBeenCalledExactlyOnceWith(story);
   });
@@ -75,37 +75,37 @@ describe("renaming", () => {
     const { story, onRename, rename } = renderCard();
 
     await rename();
-    await userEvent.fill(titleInput(), "Titolo nuovo");
+    await userEvent.fill(titleInput(), "New title");
     await userEvent.keyboard("{Enter}");
 
-    expect(onRename).toHaveBeenCalledExactlyOnceWith(story, "Titolo nuovo");
+    expect(onRename).toHaveBeenCalledExactlyOnceWith(story, "New title");
   });
 
   it("trims the title before saving", async () => {
     const { story, onRename, rename } = renderCard();
 
     await rename();
-    await userEvent.fill(titleInput(), "   Titolo nuovo   ");
+    await userEvent.fill(titleInput(), "   New title   ");
     await userEvent.keyboard("{Enter}");
 
-    expect(onRename).toHaveBeenCalledExactlyOnceWith(story, "Titolo nuovo");
+    expect(onRename).toHaveBeenCalledExactlyOnceWith(story, "New title");
   });
 
   it("saves when the input loses focus", async () => {
     const { story, onRename, rename } = renderCard();
 
     await rename();
-    await userEvent.fill(titleInput(), "Salvato uscendo");
+    await userEvent.fill(titleInput(), "Saved on blur");
     await userEvent.click(document.body);
 
-    expect(onRename).toHaveBeenCalledExactlyOnceWith(story, "Salvato uscendo");
+    expect(onRename).toHaveBeenCalledExactlyOnceWith(story, "Saved on blur");
   });
 
   it("discards the edit on Escape without touching the server", async () => {
     const { story, onRename, rename } = renderCard();
 
     await rename();
-    await userEvent.fill(titleInput(), "Ripensamento");
+    await userEvent.fill(titleInput(), "Second thoughts");
     await userEvent.keyboard("{Escape}");
 
     expect(onRename).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe("renaming", () => {
     });
 
     await rename();
-    await userEvent.fill(titleInput(), "Titolo nuovo");
+    await userEvent.fill(titleInput(), "New title");
     await userEvent.keyboard("{Enter}");
 
     expect(onRename).toHaveBeenCalledTimes(1);
@@ -155,9 +155,9 @@ describe("renaming", () => {
     });
 
     await rename();
-    await userEvent.fill(titleInput(), "Titolo che non va perso");
+    await userEvent.fill(titleInput(), "A title worth keeping");
     await userEvent.keyboard("{Enter}");
 
-    await expect.element(titleInput()).toHaveValue("Titolo che non va perso");
+    await expect.element(titleInput()).toHaveValue("A title worth keeping");
   });
 });

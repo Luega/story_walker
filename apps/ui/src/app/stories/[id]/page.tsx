@@ -66,16 +66,16 @@ export default function StoryPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [spreadCount]);
 
-  if (state.kind === "loading") return <p className="text-muted">Caricamento…</p>;
+  if (state.kind === "loading") return <p className="text-muted">Loading…</p>;
 
   if (state.kind === "notFound" || state.kind === "error") {
     return (
       <div className="space-y-4 py-16 text-center">
         <p className="font-display text-2xl">
-          {state.kind === "notFound" ? "Storia non trovata." : state.message}
+          {state.kind === "notFound" ? "Story not found." : state.message}
         </p>
         <Link href="/dashboard" className="font-semibold text-accent hover:underline">
-          ← Torna alle storie
+          ← Back to your stories
         </Link>
       </div>
     );
@@ -88,13 +88,13 @@ export default function StoryPage() {
   return (
     <div className="space-y-6">
       <Link href="/dashboard" className="text-sm font-semibold text-muted hover:text-accent">
-        ← Tutte le storie
+        ← All stories
       </Link>
 
       <div className="space-y-2">
         <h1 className="font-display text-4xl font-semibold tracking-tight">{s.title}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-          <span>Età {s.targetAge}+</span>
+          <span>Age {s.targetAge}+</span>
           <span aria-hidden>·</span>
           <span>{s.artStyle}</span>
           <StatusBadge status={s.status} />
@@ -103,12 +103,12 @@ export default function StoryPage() {
 
       {s.status === "Generating" && (
         <p className="rounded-lg bg-amber-100 px-4 py-3 text-amber-900" aria-live="polite">
-          Generazione in corso… le pagine appariranno qui man mano che sono pronte.
+          Generating… pages will appear here as they are ready.
         </p>
       )}
       {s.status === "Failed" && (
         <p role="alert" className="rounded-lg bg-red-100 px-4 py-3 text-red-800">
-          La generazione di questa storia non è andata a buon fine.
+          This story could not be generated.
         </p>
       )}
 
@@ -123,13 +123,13 @@ export default function StoryPage() {
               disabled={current === 0}
               className="rounded-xl border border-border bg-surface px-4 py-2 font-semibold disabled:opacity-40"
             >
-              ← Precedente
+              ← Previous
             </button>
             <span className="text-sm text-muted">
               {firstVisible === lastVisible
-                ? `Pagina ${firstVisible}`
-                : `Pagine ${firstVisible}–${lastVisible}`}{" "}
-              di {pages.length}
+                ? `Page ${firstVisible}`
+                : `Pages ${firstVisible}–${lastVisible}`}{" "}
+              of {pages.length}
             </span>
             <button
               type="button"
@@ -137,7 +137,7 @@ export default function StoryPage() {
               disabled={current >= spreadCount - 1}
               className="rounded-xl border border-border bg-surface px-4 py-2 font-semibold disabled:opacity-40"
             >
-              Successiva →
+              Next →
             </button>
           </nav>
         </>

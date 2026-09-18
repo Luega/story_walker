@@ -9,7 +9,8 @@ creating stories, and the live story viewer (Azure SignalR).
 
 | Route           | What it does                                                                 |
 | --------------- | ---------------------------------------------------------------------------- |
-| `/`             | Story list (`GET /stories`) and the "Nuova storia" modal that chats with the agent (`POST /stories/conversations`). When the agent authors the brief (202) it navigates to the new story. |
+| `/`             | Public landing page: what Story Walker does, and a "Get started" link to sign-up. |
+| `/dashboard`    | Story list (`GET /stories`) and the "New story" modal that chats with the agent (`POST /stories/conversations`). When the agent authors the brief (202) it navigates to the new story. |
 | `/stories/[id]` | Story viewer (`GET /stories/{id}`): two facing pages at a time, image above and text below. Polls while the story is generating. |
 
 ## Running locally

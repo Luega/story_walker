@@ -32,7 +32,7 @@ public sealed class CurrentUserTests(StoryWalkerApiFactory factory)
         await _factory.ResetAsync();
         var client = _factory.CreateClientAs("user_new", "new@storywalker.app");
 
-        await client.PostAsJsonAsync("/stories/conversations", Turn("ciao"), Ct);
+        await client.PostAsJsonAsync("/stories/conversations", Turn("hello"), Ct);
 
         var user = await _factory.ExecuteDbAsync(db =>
             db.Users.SingleAsync(u => u.ClerkUserId == "user_new", Ct)
@@ -46,8 +46,8 @@ public sealed class CurrentUserTests(StoryWalkerApiFactory factory)
         await _factory.ResetAsync();
         var client = _factory.CreateClientAs("user_repeat");
 
-        await client.PostAsJsonAsync("/stories/conversations", Turn("ciao"), Ct);
-        await client.PostAsJsonAsync("/stories/conversations", Turn("ancora"), Ct);
+        await client.PostAsJsonAsync("/stories/conversations", Turn("hello"), Ct);
+        await client.PostAsJsonAsync("/stories/conversations", Turn("again"), Ct);
 
         var count = await _factory.ExecuteDbAsync(db =>
             db.Users.CountAsync(u => u.ClerkUserId == "user_repeat", Ct)

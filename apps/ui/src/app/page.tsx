@@ -5,16 +5,16 @@ import Link from "next/link";
 // is what tells them apart).
 const STEPS = [
   {
-    title: "Racconta l'idea",
-    body: "Chiacchieri con l'agente: chi è il protagonista, dove si svolge, per quale bambino è.",
+    title: "Share your idea",
+    body: "Chat with the agent: who the hero is, where the story takes place, which child it's for.",
   },
   {
-    title: "L'agente scrive il piano",
-    body: "Trasforma la conversazione in un brief completo — titolo, età, stile illustrativo, sei pagine.",
+    title: "The agent writes the plan",
+    body: "It turns the conversation into a complete brief — title, age, illustration style, six pages.",
   },
   {
-    title: "Ricevi la storia",
-    body: "Testo e illustrazioni vengono generati insieme, con personaggi coerenti da una pagina all'altra.",
+    title: "Get your story",
+    body: "Text and illustrations are generated together, with characters that stay consistent from page to page.",
   },
 ];
 
@@ -23,22 +23,22 @@ export default function LandingPage() {
     <div className="space-y-16 py-8">
       <section className="max-w-2xl space-y-6">
         <h1 className="font-display text-5xl font-semibold tracking-tight sm:text-6xl">
-          Storie illustrate, scritte per il tuo bambino.
+          Illustrated stories, written for your child.
         </h1>
         <p className="text-lg text-muted">
-          Descrivi l&apos;idea a voce tua. Story Walker la trasforma in una storia illustrata di sei
-          pagine, con gli stessi personaggi dall&apos;inizio alla fine.
+          Describe the idea in your own words. Story Walker turns it into a six-page illustrated
+          story, with the same characters from beginning to end.
         </p>
         <Link
           href="/sign-up"
           className="inline-block rounded-xl bg-accent px-6 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105"
         >
-          Inizia
+          Get started
         </Link>
       </section>
 
       <section className="space-y-6">
-        <h2 className="font-display text-2xl font-semibold tracking-tight">Come funziona</h2>
+        <h2 className="font-display text-2xl font-semibold tracking-tight">How it works</h2>
         <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {STEPS.map((step, i) => (
             <li

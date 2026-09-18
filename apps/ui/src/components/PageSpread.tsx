@@ -10,16 +10,16 @@ function StoryPage({ page }: { page: Page }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={page.imageUrl}
-            alt={`Illustrazione della pagina ${page.pageNo}`}
+            alt={`Illustration for page ${page.pageNo}`}
             className="h-full w-full object-cover"
           />
         ) : page.status === "Failed" ? (
           <div className="flex h-full items-center justify-center p-6 text-center text-muted">
-            Illustrazione non disponibile
+            Illustration unavailable
           </div>
         ) : (
           <div className="flex h-full animate-pulse items-center justify-center text-muted">
-            Illustrazione in arrivo…
+            Illustration on its way…
           </div>
         )}
       </div>

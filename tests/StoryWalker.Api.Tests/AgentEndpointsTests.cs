@@ -124,7 +124,7 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
         // The owner starts a conversation and gets its id back.
         var started = await _client.PostAsJsonAsync(
             "/stories/conversations",
-            new AgentMessageRequest(ConversationId: null, Message: "ciao"),
+            new AgentMessageRequest(ConversationId: null, Message: "hello"),
             Ct
         );
         var owned = await started.Content.ReadFromJsonAsync<AgentMessageResponse>(Ct);
@@ -134,7 +134,7 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
         var stranger = _factory.CreateClientAs("user_conversation_thief");
         var response = await stranger.PostAsJsonAsync(
             "/stories/conversations",
-            new AgentMessageRequest(owned.ConversationId, "continua"),
+            new AgentMessageRequest(owned.ConversationId, "continue"),
             Ct
         );
 

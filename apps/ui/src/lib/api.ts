@@ -60,8 +60,8 @@ export async function renameStory(id: string, title: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
   });
-  if (res.status === 404) throw new Error("Storia non trovata.");
-  if (!res.ok) throw new Error(`Impossibile rinominare la storia (${res.status}).`);
+  if (res.status === 404) throw new Error("Story not found.");
+  if (!res.ok) throw new Error(`Failed to rename story (${res.status})`);
   const story: Story = await res.json();
   return story.title;
 }
@@ -70,7 +70,7 @@ export async function renameStory(id: string, title: string): Promise<string> {
 export async function deleteStory(id: string): Promise<void> {
   const res = await fetch(`${BASE}/stories/${encodeURIComponent(id)}`, { method: "DELETE" });
   if (!res.ok && res.status !== 404) {
-    throw new Error(`Impossibile eliminare la storia (${res.status}).`);
+    throw new Error(`Failed to delete story (${res.status})`);
   }
 }
 
@@ -90,7 +90,7 @@ export async function sendAgentMessage(
       body: JSON.stringify({ conversationId, message }),
     });
   } catch {
-    return { kind: "error", detail: "Impossibile raggiungere il server." };
+    return { kind: "error", detail: "Could not reach the server." };
   }
 
   if (res.status === 202) {
@@ -107,6 +107,6 @@ export async function sendAgentMessage(
   const problem = await res.json().catch(() => null);
   return {
     kind: "error",
-    detail: problem?.detail ?? problem?.title ?? `Errore del server (${res.status}).`,
+    detail: problem?.detail ?? problem?.title ?? `Server error (${res.status})`,
   };
 }
