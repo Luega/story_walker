@@ -12,8 +12,11 @@ public interface IStoryAgent
     /// <summary>
     /// Sends one user turn and returns the agent's reply. Pass <paramref name="conversationId"/>
     /// as <c>null</c> to start a new conversation (the returned id continues it on later turns).
+    /// A conversation belonging to another <paramref name="userId"/> is indistinguishable from one
+    /// that does not exist: both raise <see cref="ConversationNotFoundException"/>.
     /// </summary>
     Task<AgentTurnResult> SendAsync(
+        Guid userId,
         string? conversationId,
         string message,
         CancellationToken ct = default

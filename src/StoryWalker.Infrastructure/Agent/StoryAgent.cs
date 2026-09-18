@@ -18,6 +18,7 @@ namespace StoryWalker.Infrastructure.Agent;
 public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) : IStoryAgent
 {
     public async Task<AgentTurnResult> SendAsync(
+        Guid userId,
         string? conversationId,
         string message,
         CancellationToken ct = default
@@ -29,6 +30,7 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
             conversation = new Conversation
             {
                 Id = Guid.NewGuid(),
+                UserId = userId,
                 Status = ConversationStatus.Active,
             };
             db.Conversations.Add(conversation);
@@ -36,7 +38,7 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         }
         else
         {
-            conversation = await LoadConversationAsync(conversationId, ct);
+            conversation = await LoadConversationAsync(userId, conversationId, ct);
             if (conversation.Status == ConversationStatus.Completed)
             {
                 return new AgentTurnResult(
@@ -154,12 +156,14 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
     }
 
     private async Task<Conversation> LoadConversationAsync(
+        Guid userId,
         string conversationId,
         CancellationToken ct
     )
     {
         // An unknown or malformed id is a not-found, so the client restarts cleanly instead of
-        // silently continuing an empty conversation.
+        // silently continuing an empty conversation. Someone else's id takes the same path: the
+        // owner filter lives in the lookup, so no caller can forget it.
         if (!Guid.TryParse(conversationId, out var id))
         {
             throw new ConversationNotFoundException(conversationId);
@@ -167,7 +171,7 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
 
         return await db
                 .Conversations.Include(c => c.Messages)
-                .FirstOrDefaultAsync(c => c.Id == id, ct)
+                .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, ct)
             ?? throw new ConversationNotFoundException(conversationId);
     }
 

@@ -12,6 +12,15 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
 
         builder.Property(c => c.Status).HasConversion<string>();
 
+        // No navigation on User: conversations are reached through the agent, never listed per user.
+        builder
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(c => c.UserId);
+
         // Messages are owned by the conversation and cascade with it.
         builder
             .HasMany(c => c.Messages)

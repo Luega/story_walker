@@ -9,8 +9,8 @@ namespace StoryWalker.Domain.Entities;
 /// </summary>
 public class Conversation : EntityBase
 {
-    /// <summary>The owning user once auth (Clerk) is wired; null until then.</summary>
-    public Guid? UserId { get; set; }
+    /// <summary>The owning user (ADR-0002). Every conversation has one from its first turn.</summary>
+    public Guid UserId { get; set; }
 
     public ConversationStatus Status { get; set; }
 

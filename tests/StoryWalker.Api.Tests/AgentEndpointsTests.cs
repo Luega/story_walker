@@ -115,4 +115,29 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Continuing_another_users_conversation_returns_404()
+    {
+        await _factory.ResetAsync();
+
+        // The owner starts a conversation and gets its id back.
+        var started = await _client.PostAsJsonAsync(
+            "/stories/conversations",
+            new AgentMessageRequest(ConversationId: null, Message: "ciao"),
+            Ct
+        );
+        var owned = await started.Content.ReadFromJsonAsync<AgentMessageResponse>(Ct);
+        Assert.NotNull(owned);
+
+        // A different signed-in user presents that id.
+        var stranger = _factory.CreateClientAs("user_conversation_thief");
+        var response = await stranger.PostAsJsonAsync(
+            "/stories/conversations",
+            new AgentMessageRequest(owned.ConversationId, "continua"),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

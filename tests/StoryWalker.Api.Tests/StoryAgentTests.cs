@@ -24,11 +24,12 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     public async Task First_turn_persists_system_then_user_then_assistant()
     {
         await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
 
         var id = await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient { Reply = "Hi!" });
-            var turn = await agent.SendAsync(conversationId: null, "hello", Ct);
+            var turn = await agent.SendAsync(me, conversationId: null, "hello", Ct);
             return turn.ConversationId;
         });
 
@@ -54,18 +55,19 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     public async Task Second_turn_appends_to_the_same_conversation()
     {
         await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
 
         var id = await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient());
-            var turn = await agent.SendAsync(conversationId: null, "one", Ct);
+            var turn = await agent.SendAsync(me, conversationId: null, "one", Ct);
             return turn.ConversationId;
         });
 
         await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient());
-            await agent.SendAsync(id, "two", Ct);
+            await agent.SendAsync(me, id, "two", Ct);
         });
 
         await _factory.ExecuteDbAsync(async db =>
@@ -88,13 +90,14 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     public async Task End_chat_sentinel_completes_the_conversation()
     {
         await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
 
         string id = null!;
         AgentTurnResult turn = null!;
         await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient { Reply = "Here is your brief. __END__CHAT__" });
-            turn = await agent.SendAsync(conversationId: null, "wrap it up", Ct);
+            turn = await agent.SendAsync(me, conversationId: null, "wrap it up", Ct);
             id = turn.ConversationId;
         });
 
@@ -116,6 +119,7 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     public async Task Invalid_brief_throws_and_rolls_back_the_turn()
     {
         await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
 
         // A brief with no pages fails validation; after the retry the agent gives up.
         var invalid = new GenerationBrief(
@@ -132,7 +136,7 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
                 new StubChatClient { Reply = "Generating now. __END__CHAT__", Brief = invalid }
             );
             await Assert.ThrowsAsync<BriefValidationException>(
-                () => agent.SendAsync(conversationId: null, "wrap it up", Ct)
+                () => agent.SendAsync(me, conversationId: null, "wrap it up", Ct)
             );
         });
 
@@ -146,12 +150,13 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     public async Task Turn_on_completed_conversation_returns_already_completed_without_appending()
     {
         await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
 
         string id = null!;
         await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient { Reply = "Here is your brief. __END__CHAT__" });
-            var turn = await agent.SendAsync(conversationId: null, "wrap it up", Ct);
+            var turn = await agent.SendAsync(me, conversationId: null, "wrap it up", Ct);
             id = turn.ConversationId;
         });
 
@@ -159,7 +164,7 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient { Reply = "should not be called" });
-            turn = await agent.SendAsync(id, "anything else?", Ct);
+            turn = await agent.SendAsync(me, id, "anything else?", Ct);
         });
 
         Assert.Equal(id, turn.ConversationId);
@@ -186,14 +191,50 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
     public async Task Unknown_conversation_id_throws_not_found()
     {
         await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
 
         await _factory.ExecuteDbAsync(async db =>
         {
             var agent = new StoryAgent(db, new StubChatClient());
             await Assert.ThrowsAsync<ConversationNotFoundException>(
-                () => agent.SendAsync(Guid.NewGuid().ToString(), "hello?", Ct)
+                () => agent.SendAsync(me, Guid.NewGuid().ToString(), "hello?", Ct)
             );
         });
+    }
+
+    [Fact]
+    public async Task Another_users_conversation_id_throws_not_found_and_appends_nothing()
+    {
+        // The HTTP test for this runs against FakeStoryAgent; this is the one that exercises the
+        // real owner filter in LoadConversationAsync, which is where the rule is actually enforced.
+        await _factory.ResetAsync();
+        var owner = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_owner"));
+        var stranger = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_agent_stranger")
+        );
+
+        var id = await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            var turn = await agent.SendAsync(owner, conversationId: null, "hello", Ct);
+            return turn.ConversationId;
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            await Assert.ThrowsAsync<ConversationNotFoundException>(
+                () => agent.SendAsync(stranger, id, "let me in", Ct)
+            );
+        });
+
+        // The attempt left the owner's conversation untouched: system, user, assistant.
+        await _factory.ExecuteDbAsync(async db =>
+            Assert.Equal(
+                3,
+                await db.ConversationMessages.CountAsync(m => m.ConversationId == Guid.Parse(id), Ct)
+            )
+        );
     }
 
     private static readonly GenerationBrief ValidBrief = new(

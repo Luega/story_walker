@@ -65,6 +65,7 @@ public static class StoryEndpoints
                         var me = await currentUser.GetIdAsync(ct);
 
                         var turn = await agent.SendAsync(
+                            me,
                             request.ConversationId,
                             request.Message.Trim(),
                             ct

@@ -7,7 +7,7 @@ namespace StoryWalker.Api.Tests;
 /// <summary>
 /// Test double for <see cref="IStoryAgent"/> so the endpoint contract can be exercised without a
 /// chat backend. It mints an id on the first turn and echoes the same id thereafter, and mirrors
-/// the real agent's not-found behaviour: an id it never issued throws
+/// the real agent's not-found behaviour: an id it never issued, or issued to another user, throws
 /// <see cref="ConversationNotFoundException"/> (so the endpoint's 404 path is covered). Sending
 /// <see cref="ConfirmMessage"/> makes it emit a ready brief, driving the endpoint's enqueue path.
 /// </summary>
@@ -36,21 +36,26 @@ internal sealed class FakeStoryAgent : IStoryAgent
         ]
     );
 
-    private readonly ConcurrentDictionary<string, byte> _issued = new();
+    private readonly ConcurrentDictionary<string, Guid> _issued = new();
 
     public Task<AgentTurnResult> SendAsync(
+        Guid userId,
         string? conversationId,
         string message,
         CancellationToken ct = default
     )
     {
-        if (!string.IsNullOrEmpty(conversationId) && !_issued.ContainsKey(conversationId))
+        // Unknown id, or an id issued to another user: both are not-found, as in the real agent.
+        if (
+            !string.IsNullOrEmpty(conversationId)
+            && (!_issued.TryGetValue(conversationId, out var owner) || owner != userId)
+        )
         {
             throw new ConversationNotFoundException(conversationId);
         }
 
         var id = conversationId ?? Guid.NewGuid().ToString();
-        _issued[id] = 0;
+        _issued[id] = userId;
 
         return Task.FromResult(
             message == ConfirmMessage
