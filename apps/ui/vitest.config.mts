@@ -24,16 +24,36 @@ export default defineConfig({
     include: ["react", "react-dom", "react/jsx-dev-runtime", "next/link", "next/navigation"],
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}"],
-    setupFiles: ["./src/test/setup.ts"],
-    browser: {
-      enabled: true,
-      provider: playwright(),
-      headless: true,
-      instances: [{ browser: "chromium" }],
-      // Vitest defaults to a 414px-wide phone viewport; the dashboard grid and the `sm:` hover
-      // behaviour of the card actions only exist above that, so pin a desktop viewport.
-      viewport: { width: 1280, height: 800 },
-    },
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "browser",
+          include: ["src/**/*.test.{ts,tsx}"],
+          // Setting `exclude` replaces Vitest's default, so node_modules has to be restated.
+          exclude: ["**/node_modules/**", "src/app/api/**"],
+          setupFiles: ["./src/test/setup.ts"],
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            headless: true,
+            instances: [{ browser: "chromium" }],
+            // Vitest defaults to a 414px-wide phone viewport; the dashboard grid and the `sm:` hover
+            // behaviour of the card actions only exist above that, so pin a desktop viewport.
+            viewport: { width: 1280, height: 800 },
+          },
+        },
+      },
+      {
+        // Route Handlers are server code: they cannot run in the browser project, and the one under
+        // test decides whether a request leaves the app with credentials, so it gets real coverage.
+        extends: true,
+        test: {
+          name: "node",
+          environment: "node",
+          include: ["src/app/api/**/*.test.ts"],
+        },
+      },
+    ],
   },
 });

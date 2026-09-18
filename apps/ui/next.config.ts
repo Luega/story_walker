@@ -1,13 +1,8 @@
 import type { NextConfig } from "next";
 
-// The browser only ever talks to this origin: /api/* is proxied to the ASP.NET Core API, so the
-// API needs no CORS policy. API_URL is read at build/start time.
-const apiUrl = process.env.API_URL ?? "http://localhost:5080";
-
-const nextConfig: NextConfig = {
-  async rewrites() {
-    return [{ source: "/api/:path*", destination: `${apiUrl}/:path*` }];
-  },
-};
+// /api/* is served by the Route Handler at src/app/api/[...path]/route.ts, which attaches the
+// Clerk token before forwarding to the ASP.NET Core API. The browser only ever talks to this
+// origin, so the API still needs no CORS policy.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

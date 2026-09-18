@@ -28,8 +28,10 @@
     types compile, but **rendering one throws**. Use `<Show when="signed-in">` /
     `<Show when="signed-out">`. Component tests never render the layout, so the suite cannot catch it.
   - `<ClerkProvider>` goes **inside `<body>`**, not wrapping `<html>`.
-  - `auth().getToken()` **throws `ClerkOfflineError`** when Clerk is unreachable, instead of
-    returning `null`. A `null` still means no session.
+  - The browser's `session.getToken()` / `useAuth().getToken()` **throw `ClerkOfflineError`** when
+    the browser is offline, instead of returning `null`. This does **not** reach Task 6: the Route
+    Handler uses the server-side `auth().getToken()` (`ServerGetToken`), which reads the session
+    token from the request and resolves `null` when signed out — the plan's null check is complete.
 
 ### Manual Clerk dashboard setup (do this before Task 5)
 
