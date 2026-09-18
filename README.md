@@ -71,3 +71,4 @@ story_walker/                       # monorepo root
 - [0018 — Persist agent conversations in PostgreSQL](docs/adr/0018-persist-agent-conversations.md)
 - [0019 — MVP scope reduction: self-contained six-page stories](docs/adr/0019-mvp-scope-reduction.md)
 - [0020 — A plain Service Bus function instead of Durable Functions](docs/adr/0020-plain-service-bus-function-for-generation.md)
+- [0021 — Clerk integration: server-side token proxy and JIT provisioning](docs/adr/0021-clerk-integration.md)
