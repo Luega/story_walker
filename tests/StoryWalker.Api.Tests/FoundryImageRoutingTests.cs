@@ -38,9 +38,33 @@ public sealed class FoundryImageRoutingTests
         Assert.IsType<AzureOpenAIImageGenerator>(Resolve("my-custom-deployment"));
     }
 
+    [Fact]
+    public void Flux_route_keeps_its_60_second_ceiling()
+    {
+        // FLUX.2-pro answered in 8-15 s across four stories; 60 s is still about four times the
+        // slowest success, so a hang costs no more than it did.
+        Assert.Equal(TimeSpan.FromSeconds(60), TimeoutFor("FLUX.2-pro", nameof(FluxImageGenerator)));
+    }
+
+    [Fact]
+    public void Azure_openai_route_gets_room_for_slower_models()
+    {
+        // gpt-image-1.5 and gpt-image-1-mini answered in 29.7-41.4 s across three stories on
+        // 2026-09-17. At 60 s the slowest success sat at two thirds of the ceiling.
+        Assert.Equal(
+            TimeSpan.FromSeconds(90),
+            TimeoutFor("gpt-image-1-mini", nameof(AzureOpenAIImageGenerator))
+        );
+    }
+
     private static IImageGenerator Resolve(string deployment) =>
+        Provider(deployment).GetRequiredService<IImageGenerator>();
+
+    private static TimeSpan TimeoutFor(string deployment, string clientName) =>
+        Provider(deployment).GetRequiredService<IHttpClientFactory>().CreateClient(clientName).Timeout;
+
+    private static ServiceProvider Provider(string deployment) =>
         new ServiceCollection()
             .AddFoundryImages("https://res.services.ai.azure.com/", deployment, "test-key")
-            .BuildServiceProvider()
-            .GetRequiredService<IImageGenerator>();
+            .BuildServiceProvider();
 }

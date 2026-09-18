@@ -69,8 +69,12 @@ rethrows so the message is redelivered and the run resumes from the first unrend
 
 ### Things this decision obliges us to build or watch
 - Watch the wall-clock time of a full run against the real image deployment. Six serial renders must
-  stay comfortably inside `functionTimeout` (currently 20 minutes in `host.json`); if a slower model
-  pushes it, either raise the timeout or split the work across messages.
+  stay comfortably inside `functionTimeout` (currently 30 minutes in `host.json`); if a slower model
+  pushes it, either raise the timeout or split the work across messages. The worst case is every
+  attempt hanging: 6 pages x (3 attempts x HTTP timeout + 15 s of backoff). Raised from 20 minutes on
+  2026-09-18, when GPT-Image renders (29.7-41.4 s against FLUX's 8-15 s) moved the Azure OpenAI route's
+  HTTP timeout from 60 s to 90 s: 28.5 minutes at worst, which 20 no longer held. Keep
+  `maxAutoLockRenewalDuration` above it (35 minutes), or the lock lapses while the page still runs.
 - `maxConcurrentCalls` is pinned to 1 so two stories cannot compete for the same image quota. Revisit
   when quota allows.
 - Keep the idempotency guarantees honest. They are no longer a nicety: they are the resume mechanism.

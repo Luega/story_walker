@@ -117,12 +117,15 @@ public static class DependencyInjection
         var useFlux = FluxImageGenerator.CanHandle(deployment);
         var clientName = useFlux ? nameof(FluxImageGenerator) : nameof(AzureOpenAIImageGenerator);
 
-        // Measured against FLUX.2-pro on 2026-09-15: successful 1024x1024 renders answered in 8-10.5 s,
-        // but 2 of 8 requests never answered at all and ran into the timeout. A hung request is
-        // retried (the renderer treats a timeout as transient), so the ceiling decides what a hang
-        // costs: 60 s, about six times the slowest success, instead of the minutes it would otherwise
-        // burn per page.
-        services.AddHttpClient(clientName, http => http.Timeout = TimeSpan.FromSeconds(60));
+        // A hung request is retried (the renderer treats a timeout as transient), so the ceiling
+        // decides what a hang costs; it is set per route because the two routes' models are ~4x apart.
+        // FLUX.2-pro, 2026-09-15/16: successes in 8-15 s, but 2 of 8 requests never answered at all.
+        // 60 s is about four times the slowest success. GPT-Image (gpt-image-1.5, gpt-image-1-mini),
+        // 2026-09-17: successes in 29.7-41.4 s, so 60 s left a slow success at two thirds of the
+        // ceiling; 90 s is about twice the slowest. Raising either one raises the worst case of a full
+        // run — keep it inside functionTimeout in host.json (ADR-0020).
+        var timeout = TimeSpan.FromSeconds(useFlux ? 60 : 90);
+        services.AddHttpClient(clientName, http => http.Timeout = timeout);
 
         services.AddSingleton<IImageGenerator>(sp =>
         {
