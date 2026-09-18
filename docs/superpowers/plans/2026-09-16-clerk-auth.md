@@ -22,6 +22,14 @@
 - **`ClockSkew` is 5 seconds**, never .NET's 5-minute default: Clerk session tokens live 60
   seconds and cannot be revoked once issued, so the skew is added onto the post-sign-out
   window.
+- **Clerk Core 3 (`@clerk/nextjs` 7.x) overrides the UI snippets below** — found while executing
+  Task 5 on 2026-09-18; the snippets were written against the pre-Core-3 API:
+  - `<SignedIn>`, `<SignedOut>` and `<Protect>` are removed. They are still exported, so imports and
+    types compile, but **rendering one throws**. Use `<Show when="signed-in">` /
+    `<Show when="signed-out">`. Component tests never render the layout, so the suite cannot catch it.
+  - `<ClerkProvider>` goes **inside `<body>`**, not wrapping `<html>`.
+  - `auth().getToken()` **throws `ClerkOfflineError`** when Clerk is unreachable, instead of
+    returning `null`. A `null` still means no session.
 
 ### Manual Clerk dashboard setup (do this before Task 5)
 
