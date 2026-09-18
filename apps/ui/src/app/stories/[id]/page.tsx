@@ -74,7 +74,7 @@ export default function StoryPage() {
         <p className="font-display text-2xl">
           {state.kind === "notFound" ? "Storia non trovata." : state.message}
         </p>
-        <Link href="/" className="font-semibold text-accent hover:underline">
+        <Link href="/dashboard" className="font-semibold text-accent hover:underline">
           ← Torna alle storie
         </Link>
       </div>
@@ -87,7 +87,7 @@ export default function StoryPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/" className="text-sm font-semibold text-muted hover:text-accent">
+      <Link href="/dashboard" className="text-sm font-semibold text-muted hover:text-accent">
         ← Tutte le storie
       </Link>
 

@@ -31,9 +31,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ClerkProvider localization={itIT}>
           <header className="border-b border-border">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-              <Link href="/" className="font-display text-2xl font-semibold tracking-tight">
-                Story Walker
-              </Link>
+              {/* The wordmark leads home: the landing for visitors, the dashboard once signed in. */}
+              <Show when="signed-out">
+                <Link href="/" className="font-display text-2xl font-semibold tracking-tight">
+                  Story Walker
+                </Link>
+              </Show>
+              <Show when="signed-in">
+                <Link
+                  href="/dashboard"
+                  className="font-display text-2xl font-semibold tracking-tight"
+                >
+                  Story Walker
+                </Link>
+              </Show>
               <div className="flex items-center gap-4">
                 {/* <Show> replaced <SignedIn>/<SignedOut> in Clerk Core 3; the old ones throw. */}
                 <Show when="signed-out">
@@ -48,6 +59,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   </Link>
                 </Show>
                 <Show when="signed-in">
+                  <Link href="/dashboard" className="text-sm font-semibold hover:text-accent">
+                    Le tue storie
+                  </Link>
                   <UserButton />
                 </Show>
               </div>

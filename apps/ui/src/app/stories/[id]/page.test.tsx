@@ -36,7 +36,11 @@ describe("loading the story", () => {
     render(<StoryPage />);
 
     expect(await screen.findByText("Storia non trovata.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Torna alle storie/ })).toHaveAttribute("href", "/");
+    // The stories list moved to /dashboard when / became the public landing page.
+    expect(screen.getByRole("link", { name: /Torna alle storie/ })).toHaveAttribute(
+      "href",
+      "/dashboard",
+    );
   });
 
   it("reports a server failure", async () => {
