@@ -22,6 +22,7 @@ erDiagram
         uuid id PK
         string clerk_user_id UK "identity from Clerk (ADR-0002)"
         string email
+        string tier "subscription plan; Free is the only one so far"
     }
 
     STORY {

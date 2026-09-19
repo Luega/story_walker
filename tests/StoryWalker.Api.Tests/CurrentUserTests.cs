@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using StoryWalker.Api.Auth;
 using StoryWalker.Application.Api;
 using StoryWalker.Domain.Entities;
+using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Api.Tests;
@@ -53,6 +54,44 @@ public sealed class CurrentUserTests(StoryWalkerApiFactory factory)
             db.Users.CountAsync(u => u.ClerkUserId == "user_repeat", Ct)
         );
         Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task Provisioned_user_starts_on_the_free_tier()
+    {
+        await _factory.ResetAsync();
+        var client = _factory.CreateClientAs("user_tier");
+
+        await client.PostAsJsonAsync("/stories/conversations", Turn("hello"), Ct);
+
+        var user = await _factory.ExecuteDbAsync(db =>
+            db.Users.SingleAsync(u => u.ClerkUserId == "user_tier", Ct)
+        );
+        Assert.Equal(UserTier.Free, user.Tier);
+    }
+
+    /// <summary>
+    /// Reads the raw column, not the mapped property: the tier is stored as text like every other
+    /// enum in the model (ER diagram), so a plain "Free" beats decoding a 0 when someone queries
+    /// the database to see which plan an account is on.
+    /// </summary>
+    [Fact]
+    public async Task Tier_is_stored_as_a_readable_string()
+    {
+        await _factory.ResetAsync();
+        const string subject = "user_tier_column";
+        var client = _factory.CreateClientAs(subject);
+
+        await client.PostAsJsonAsync("/stories/conversations", Turn("hello"), Ct);
+
+        var stored = await _factory.ExecuteDbAsync(db =>
+            db
+                .Database.SqlQuery<string>(
+                    $"""SELECT "Tier" AS "Value" FROM "Users" WHERE "ClerkUserId" = {subject}"""
+                )
+                .SingleAsync(Ct)
+        );
+        Assert.Equal("Free", stored);
     }
 
     /// <summary>
