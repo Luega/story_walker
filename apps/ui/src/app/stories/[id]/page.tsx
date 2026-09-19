@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getStory, type Story } from "@/lib/api";
 import { PageSpread } from "@/components/PageSpread";
 import { StatusBadge } from "@/components/StatusBadge";
 
-const POLL_MS = 3000;
 const PAGES_PER_SPREAD = 2;
 
 type LoadState =
@@ -16,18 +15,20 @@ type LoadState =
   | { kind: "error"; message: string }
   | { kind: "loaded"; story: Story };
 
-function isInProgress(story: Story) {
-  return story.status === "Generating" || story.pages.some((p) => p.status === "Pending");
-}
-
+/**
+ * Only a Complete story can be read here. A story still being generated has nothing to show, and a
+ * failed one never will, so both are sent back to the dashboard - which is where their state is
+ * explained. The status is settled once and for all by the time it reaches Complete, so there is
+ * nothing on this page left to poll for.
+ */
 export default function StoryPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [spread, setSpread] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function load() {
       try {
@@ -37,8 +38,12 @@ export default function StoryPage() {
           setState({ kind: "notFound" });
           return;
         }
+        if (story.status !== "Complete") {
+          // replace, not push: Back should return where the reader came from, not here.
+          router.replace("/dashboard");
+          return;
+        }
         setState({ kind: "loaded", story });
-        if (isInProgress(story)) timer = setTimeout(load, POLL_MS);
       } catch (e) {
         if (!cancelled) setState({ kind: "error", message: (e as Error).message });
       }
@@ -47,9 +52,8 @@ export default function StoryPage() {
     void load();
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [id]);
+  }, [id, router]);
 
   const story = state.kind === "loaded" ? state.story : null;
   const pages = story?.pages ?? [];
@@ -100,17 +104,6 @@ export default function StoryPage() {
           <StatusBadge status={s.status} />
         </div>
       </div>
-
-      {s.status === "Generating" && (
-        <p className="rounded-lg bg-amber-100 px-4 py-3 text-amber-900" aria-live="polite">
-          Generating… pages will appear here as they are ready.
-        </p>
-      )}
-      {s.status === "Failed" && (
-        <p role="alert" className="rounded-lg bg-red-100 px-4 py-3 text-red-800">
-          This story could not be generated.
-        </p>
-      )}
 
       {pages.length > 0 && (
         <>

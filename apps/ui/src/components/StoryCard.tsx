@@ -12,6 +12,10 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
  * buttons can sit inside the card without nesting a button in an anchor. While renaming, the input
  * replaces the link entirely — that removes the overlay instead of fighting it for the clicks.
  * Both actions only report intent; the dashboard owns the API calls and the list.
+ *
+ * Only a Complete story links anywhere: the others have nothing to read yet, so the title is plain
+ * text and the card drops the affordances that would suggest otherwise. Renaming and deleting stay
+ * available throughout — a story you cannot open is still one you may want to tidy away.
  */
 export function StoryCard({
   story,
@@ -68,9 +72,20 @@ export function StoryCard({
     }
   }
 
+  const readable = story.status === "Complete";
+  const cardClassName = [
+    "group relative flex w-full flex-col gap-3 rounded-2xl border p-5 transition focus-within:border-accent",
+    story.status === "Failed" ? "border-red-400/40 bg-red-500/10" : "border-border bg-surface",
+    readable ? "hover:-translate-y-0.5 hover:border-accent hover:shadow-md" : "",
+  ].join(" ");
+
   return (
-    <div className="group relative flex w-full flex-col gap-3 rounded-2xl border border-border bg-surface p-5 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-md focus-within:border-accent">
-      <h2 className="pr-16 font-display text-xl font-semibold leading-snug group-hover:text-accent">
+    <div className={cardClassName}>
+      <h2
+        className={`pr-16 font-display text-xl font-semibold leading-snug ${
+          readable ? "group-hover:text-accent" : "text-muted"
+        }`}
+      >
         {editing ? (
           <input
             value={draft}
@@ -82,13 +97,15 @@ export function StoryCard({
             aria-label="Story title"
             className="w-full rounded-lg border border-accent bg-background px-2 py-1 font-display text-xl font-semibold text-foreground outline-none disabled:opacity-60"
           />
-        ) : (
+        ) : readable ? (
           <Link
             href={`/stories/${story.id}`}
             className="outline-none after:absolute after:inset-0 after:rounded-2xl"
           >
             {story.title}
           </Link>
+        ) : (
+          <span className="cursor-not-allowed">{story.title}</span>
         )}
       </h2>
 

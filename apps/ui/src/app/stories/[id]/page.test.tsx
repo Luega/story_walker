@@ -1,15 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "vitest/browser";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { worker } from "@/test/handlers";
 import { aPage, aStory } from "@/test/factories";
 import StoryPage from "./page";
 
 const STORY_ID = "11111111-1111-4111-8111-111111111111";
 
-// The page reads its id from the route; only that is faked.
-vi.mock("next/navigation", () => ({ useParams: () => ({ id: STORY_ID }) }));
+// The page reads its id from the route and sends unreadable stories away; only those are faked.
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({
+  useParams: () => ({ id: STORY_ID }),
+  useRouter: () => ({ replace }),
+}));
+
+beforeEach(() => replace.mockClear());
 
 function serveStory(overrides: Parameters<typeof aStory>[0] = {}) {
   const story = aStory({ id: STORY_ID, ...overrides });
@@ -51,19 +57,25 @@ describe("loading the story", () => {
   });
 });
 
-describe("status messages", () => {
-  it("says the story is still being generated", async () => {
-    serveStory({ status: "Generating" });
+describe("stories that cannot be read yet", () => {
+  it.each(["Draft", "Generating", "Failed"] as const)(
+    "sends the reader back to the dashboard when the story is %s",
+    async (status) => {
+      serveStory({ status, title: "Not ready" });
+      render(<StoryPage />);
+
+      await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
+      // Nothing of the story is shown on the way out.
+      expect(screen.queryByRole("heading", { name: "Not ready" })).not.toBeInTheDocument();
+    },
+  );
+
+  it("opens a story that is ready instead of redirecting", async () => {
+    serveStory({ status: "Complete", title: "The Kind Dragon" });
     render(<StoryPage />);
 
-    expect(await screen.findByText(/pages will appear here/)).toBeInTheDocument();
-  });
-
-  it("says when generation failed", async () => {
-    serveStory({ status: "Failed" });
-    render(<StoryPage />);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(/could not be generated/);
+    expect(await screen.findByRole("heading", { name: "The Kind Dragon" })).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
   });
 });
 

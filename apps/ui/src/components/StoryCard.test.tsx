@@ -32,14 +32,41 @@ function renderCard({
 
 const titleInput = () => screen.getByRole("textbox", { name: "Story title" });
 
+/** The card itself: the h2 sits directly inside it. */
+const cardOf = (title: string) => screen.getByRole("heading", { name: title }).parentElement;
+
 describe("reading", () => {
-  it("links to the story", () => {
-    const { story } = renderCard({ title: "The Curious Moon" });
+  it("links to a story that is ready", () => {
+    const { story } = renderCard({ title: "The Curious Moon", status: "Complete" });
 
     expect(screen.getByRole("link", { name: "The Curious Moon" })).toHaveAttribute(
       "href",
       `/stories/${story.id}`,
     );
+  });
+
+  // Only a settled story is worth opening: the others have no pages to read yet.
+  it.each(["Draft", "Generating", "Failed"] as const)(
+    "does not link to a story that is %s",
+    (status) => {
+      renderCard({ title: "The Curious Moon", status });
+
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      // The title is still shown, just not as a way in.
+      expect(screen.getByRole("heading", { name: "The Curious Moon" })).toBeInTheDocument();
+    },
+  );
+
+  it("tints a failed story red", () => {
+    renderCard({ title: "Gone wrong", status: "Failed" });
+
+    expect(cardOf("Gone wrong")).toHaveClass("bg-red-500/10");
+  });
+
+  it("leaves a story that can be read untinted", () => {
+    renderCard({ title: "All well", status: "Complete" });
+
+    expect(cardOf("All well")).not.toHaveClass("bg-red-500/10");
   });
 
   it("names its actions after the story, so they are distinguishable in a list", () => {

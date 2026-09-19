@@ -190,8 +190,9 @@ describe("when the agent finishes the chat", () => {
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: "New story" })).not.toBeInTheDocument(),
     );
-    // Refetched straight away rather than left stale until the next poll.
-    expect(await screen.findByRole("link", { name: "The Kind Dragon" })).toBeInTheDocument();
+    // Refetched straight away rather than left stale until the next poll. Not a link: it is still
+    // generating, so the card shows the title without a way in.
+    expect(await screen.findByRole("heading", { name: "The Kind Dragon" })).toBeInTheDocument();
     expect(list.calls).toBeGreaterThan(1);
   });
 
@@ -236,7 +237,7 @@ describe("polling", () => {
   it("keeps refreshing while a story is still generating", async () => {
     const list = serveStories(aStorySummary({ status: "Generating", title: "In corso" }));
     render(<DashboardPage />);
-    await screen.findByRole("link", { name: "In corso" });
+    await screen.findByRole("heading", { name: "In corso" });
 
     await waitFor(() => expect(list.calls).toBeGreaterThan(1), { timeout: 8000 });
   }, 10_000);
