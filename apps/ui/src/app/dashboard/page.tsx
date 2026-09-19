@@ -14,8 +14,16 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<StorySummary | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [queuedId, setQueuedId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const generating = stories?.some((s) => s.status === "Generating") ?? false;
+
+  const queued = queuedId === null ? undefined : stories?.find((s) => s.id === queuedId);
+  // Announced from the moment the agent queues the story until it stops generating. `undefined`
+  // covers the gap before the refetch lands; the dismiss button covers a story that never returns.
+  const showQueuedNotice =
+    queuedId !== null && (queued === undefined || queued.status === "Generating");
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +47,13 @@ export default function DashboardPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [generating]);
+  }, [generating, reloadKey]);
+
+  /** The agent authored the brief: show the new story here rather than waiting for the next poll. */
+  function handleQueued(storyId: string) {
+    setQueuedId(storyId);
+    setReloadKey((k) => k + 1);
+  }
 
   async function handleRename(story: StorySummary, title: string) {
     try {
@@ -88,6 +102,23 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {showQueuedNotice && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-4 rounded-lg bg-accent/10 px-4 py-3 text-foreground"
+        >
+          <p>Your story is being generated — it will appear below in a moment.</p>
+          <button
+            type="button"
+            onClick={() => setQueuedId(null)}
+            aria-label="Dismiss"
+            className="rounded-full px-2 text-xl leading-none text-muted hover:text-foreground"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {error && (
         <p role="alert" className="rounded-lg bg-red-100 px-4 py-3 text-red-800">
           {error}
@@ -112,7 +143,7 @@ export default function DashboardPage() {
         </ul>
       )}
 
-      {modalOpen && <NewStoryModal onClose={() => setModalOpen(false)} />}
+      {modalOpen && <NewStoryModal onClose={() => setModalOpen(false)} onQueued={handleQueued} />}
 
       {pendingDelete && (
         <ConfirmDeleteDialog

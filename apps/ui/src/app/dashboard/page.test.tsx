@@ -1,15 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "vitest/browser";
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { worker } from "@/test/handlers";
 import { aStorySummary } from "@/test/factories";
 import DashboardPage from "./page";
-
-// The dashboard mounts NewStoryModal, which needs Next's router. Only the navigation is faked;
-// everything else in these tests goes through real HTTP to MSW.
-const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 /** Serves the list and counts the requests, so polling behaviour is observable. */
 function serveStories(...stories: ReturnType<typeof aStorySummary>[]) {
@@ -22,8 +17,6 @@ function serveStories(...stories: ReturnType<typeof aStorySummary>[]) {
   );
   return counter;
 }
-
-beforeEach(() => push.mockClear());
 
 describe("listing", () => {
   it("shows the stories the API returns", async () => {
@@ -159,6 +152,81 @@ describe("renaming a story", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/500/);
     expect(screen.getByRole("textbox", { name: "Story title" })).toHaveValue("New title");
+  });
+});
+
+describe("when the agent finishes the chat", () => {
+  /** The agent queues a story; the list serves it only from the next fetch onwards. */
+  function agentQueues(story: ReturnType<typeof aStorySummary>) {
+    let list: ReturnType<typeof aStorySummary>[] = [];
+    const counter = { calls: 0 };
+    worker.use(
+      http.get("/api/stories", () => {
+        counter.calls += 1;
+        return HttpResponse.json(list);
+      }),
+      http.post("/api/stories/conversations", () => {
+        list = [story];
+        return HttpResponse.json({ storyId: story.id, status: "Generating" }, { status: 202 });
+      }),
+    );
+    return counter;
+  }
+
+  /** Opens the chat and sends the one turn that makes the agent author the brief. */
+  async function chatUntilQueued() {
+    await userEvent.click(screen.getByRole("button", { name: "+ New story" }));
+    await userEvent.fill(screen.getByRole("textbox"), "yes, confirm");
+    await userEvent.keyboard("{Enter}");
+  }
+
+  it("closes the chat and shows the queued story without leaving the dashboard", async () => {
+    const list = agentQueues(aStorySummary({ status: "Generating", title: "The Kind Dragon" }));
+    render(<DashboardPage />);
+    await screen.findByText(/No stories yet/);
+
+    await chatUntilQueued();
+
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "New story" })).not.toBeInTheDocument(),
+    );
+    // Refetched straight away rather than left stale until the next poll.
+    expect(await screen.findByRole("link", { name: "The Kind Dragon" })).toBeInTheDocument();
+    expect(list.calls).toBeGreaterThan(1);
+  });
+
+  it("tells the user the story is being generated", async () => {
+    agentQueues(aStorySummary({ status: "Generating", title: "The Kind Dragon" }));
+    render(<DashboardPage />);
+    await screen.findByText(/No stories yet/);
+
+    await chatUntilQueued();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/being generated/i);
+  });
+
+  it("lets the user dismiss the notice", async () => {
+    agentQueues(aStorySummary({ status: "Generating", title: "The Kind Dragon" }));
+    render(<DashboardPage />);
+    await screen.findByText(/No stories yet/);
+    await chatUntilQueued();
+    await screen.findByRole("status");
+
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("drops the notice once the story is no longer generating", async () => {
+    agentQueues(aStorySummary({ status: "Complete", title: "The Kind Dragon" }));
+    render(<DashboardPage />);
+    await screen.findByText(/No stories yet/);
+
+    await chatUntilQueued();
+
+    // The refetch already says Complete, so there is nothing left for the user to wait for.
+    expect(await screen.findByRole("link", { name: "The Kind Dragon" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });
 

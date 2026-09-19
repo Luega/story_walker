@@ -1,12 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "vitest/browser";
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { worker } from "@/test/handlers";
 import { NewStoryModal } from "./NewStoryModal";
-
-const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 const CONVERSATIONS = "/api/stories/conversations";
 
@@ -24,11 +21,10 @@ function agentReplies(reply: string, conversationId = "conv-1") {
 
 function renderModal() {
   const onClose = vi.fn();
-  render(<NewStoryModal onClose={onClose} />);
-  return { onClose, input: screen.getByRole("textbox") };
+  const onQueued = vi.fn();
+  render(<NewStoryModal onClose={onClose} onQueued={onQueued} />);
+  return { onClose, onQueued, input: screen.getByRole("textbox") };
 }
-
-beforeEach(() => push.mockClear());
 
 describe("the conversation", () => {
   it("greets the user with a prompt about what to write", () => {
@@ -91,18 +87,20 @@ describe("the conversation", () => {
 });
 
 describe("when the brief is ready", () => {
-  it("navigates to the queued story", async () => {
+  it("hands the queued story to the dashboard and closes", async () => {
     worker.use(
       http.post(CONVERSATIONS, () =>
         HttpResponse.json({ storyId: "story-7", status: "Generating" }, { status: 202 }),
       ),
     );
-    const { input } = renderModal();
+    const { input, onQueued, onClose } = renderModal();
 
     await userEvent.fill(input, "yes, confirm");
     await userEvent.keyboard("{Enter}");
 
-    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/stories/story-7"));
+    await vi.waitFor(() => expect(onQueued).toHaveBeenCalledWith("story-7"));
+    // The user lands back on the dashboard, so the modal dismisses itself once the brief is in.
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   });
 });
 

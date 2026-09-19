@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useRouter } from "next/navigation";
 import { sendAgentMessage } from "@/lib/api";
 
 interface Message {
@@ -16,9 +15,17 @@ const GREETING: Message = {
 
 /**
  * Chat with the story agent. Mounted only while open, so closing it discards the conversation.
+ *
+ * It does not navigate: once the agent has the brief it reports the queued story to the dashboard
+ * behind it and closes, leaving the user where they started.
  */
-export function NewStoryModal({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
+export function NewStoryModal({
+  onClose,
+  onQueued,
+}: {
+  onClose: () => void;
+  onQueued: (storyId: string) => void;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +62,8 @@ export function NewStoryModal({ onClose }: { onClose: () => void }) {
         setMessages((m) => [...m, { role: "assistant", text: turn.reply }]);
         break;
       case "queued":
-        router.push(`/stories/${turn.storyId}`);
+        onQueued(turn.storyId);
+        dialogRef.current?.close();
         break;
       case "notFound":
         setConversationId(null);
