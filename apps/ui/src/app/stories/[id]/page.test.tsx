@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import { userEvent } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { worker } from "@/test/handlers";
 import { aPage, aStory } from "@/test/factories";
 import StoryPage from "./page";
@@ -162,5 +162,78 @@ describe("illustrations", () => {
     render(<StoryPage />);
 
     expect(await screen.findByText(/Illustration unavailable/)).toBeInTheDocument();
+  });
+});
+
+describe("reading on a phone", () => {
+  // The suite pins a desktop viewport; the immersive reader only exists below it.
+  beforeEach(() => page.viewport(390, 844));
+  afterEach(() => page.viewport(1280, 800));
+
+  /** A flick across the reader: pointer down, moved by `dx`, up. A tap is a swipe of zero. */
+  async function swipe(dx: number) {
+    const reader = screen.getByRole("region", { name: "Story reader" });
+    const from = 200;
+    for (const [type, clientX] of [
+      ["pointerdown", from],
+      ["pointerup", from + dx],
+    ] as const) {
+      reader.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, clientX, pointerId: 1, isPrimary: true }),
+      );
+    }
+  }
+
+  it("shows one page at a time", async () => {
+    serveStory({ pages: sixPages });
+    render(<StoryPage />);
+
+    expect(await screen.findByText("Content of page 1")).toBeInTheDocument();
+    expect(screen.queryByText("Content of page 2")).not.toBeInTheDocument();
+    expect(screen.getByText(/Page 1 of 6/)).toBeInTheDocument();
+  });
+
+  it("shows the story alone, without the details that belong to the dashboard", async () => {
+    serveStory({ pages: sixPages, targetAge: 7, artStyle: "watercolour" });
+    render(<StoryPage />);
+    await screen.findByText("Content of page 1");
+
+    expect(screen.queryByText("Age 7+")).not.toBeInTheDocument();
+    expect(screen.queryByText("watercolour")).not.toBeInTheDocument();
+  });
+
+  it("turns one page at a time with the reader controls", async () => {
+    serveStory({ pages: sixPages });
+    render(<StoryPage />);
+    await screen.findByText("Content of page 1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByText("Content of page 2")).toBeInTheDocument();
+    expect(screen.getByText(/Page 2 of 6/)).toBeInTheDocument();
+  });
+
+  it("turns the page when the reader is swiped", async () => {
+    serveStory({ pages: sixPages });
+    render(<StoryPage />);
+    await screen.findByText("Content of page 1");
+
+    await swipe(-120);
+    expect(screen.getByText("Content of page 2")).toBeInTheDocument();
+
+    await swipe(120);
+    expect(screen.getByText("Content of page 1")).toBeInTheDocument();
+  });
+
+  it("gets out of the way while reading and comes back on a tap", async () => {
+    serveStory({ pages: sixPages });
+    render(<StoryPage />);
+    await screen.findByText("Content of page 1");
+    const controls = screen.getByRole("navigation", { name: "Reader controls" });
+
+    await vi.waitFor(() => expect(controls).toHaveAttribute("inert"), { timeout: 6000 });
+
+    await swipe(0);
+    expect(controls).not.toHaveAttribute("inert");
   });
 });
