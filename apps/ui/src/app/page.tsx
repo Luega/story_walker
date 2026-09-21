@@ -1,5 +1,42 @@
 import Link from "next/link";
 
+/**
+ * PLACEHOLDER: every picture on this page is a random photograph from Lorem Picsum, keyed by a
+ * fixed seed so a slot always gets the same one. None of them shows Story Walker, and the portraits
+ * beside the quotes are strangers, not the parents named there. Replace the lot - words and faces
+ * together - before this page is shown to anyone.
+ *
+ * A plain <img>, as in PageSpread: next/image would mean naming picsum.photos in next.config.ts,
+ * which puts a placeholder host into production config that has to be remembered and removed.
+ */
+function Placeholder({
+  seed,
+  width,
+  height,
+  alt,
+  className = "",
+  priority = false,
+}: {
+  seed: string;
+  width: number;
+  height: number;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`https://picsum.photos/seed/${seed}/${width}/${height}`}
+      alt={alt}
+      width={width}
+      height={height}
+      loading={priority ? "eager" : "lazy"}
+      className={`bg-surface object-cover ${className}`}
+    />
+  );
+}
+
 // Public entry point. A server component with no data fetching: nothing here depends on who is
 // looking, so it renders the same for a visitor and for a signed-in user (the header's UserButton
 // is what tells them apart).
@@ -55,16 +92,29 @@ function StartStory({ className = "" }: { className?: string }) {
 export default function LandingPage() {
   return (
     <div className="space-y-20 py-8 sm:space-y-24">
-      <section className="max-w-2xl space-y-6">
-        <h1 className="font-display text-5xl font-semibold tracking-tight sm:text-6xl">
-          Tonight’s story doesn’t exist yet.
-        </h1>
-        <p className="text-lg text-muted">
-          Tell Story Walker what your child is wrestling with — sharing, a new baby brother, the
-          dark — and get back a six-page illustrated story about exactly that, with the same
-          characters from the first page to the last.
-        </p>
-        <StartStory />
+      <section
+        aria-labelledby="hero"
+        className="grid grid-cols-1 items-center gap-10 md:grid-cols-2 md:gap-12"
+      >
+        <div className="space-y-6">
+          <h1 id="hero" className="font-display text-5xl font-semibold tracking-tight sm:text-6xl">
+            Tonight’s story doesn’t exist yet.
+          </h1>
+          <p className="text-lg text-muted">
+            Tell Story Walker what your child is wrestling with — sharing, a new baby brother, the
+            dark — and get back a six-page illustrated story about exactly that, with the same
+            characters from the first page to the last.
+          </p>
+          <StartStory />
+        </div>
+        <Placeholder
+          seed="bedtime"
+          width={800}
+          height={800}
+          priority
+          alt="Placeholder photograph standing in for a story being read at bedtime"
+          className="aspect-square w-full rounded-2xl border border-border"
+        />
       </section>
 
       {/* The origin story is set like a page of a book: the product's own voice, in its own type. */}
@@ -72,21 +122,32 @@ export default function LandingPage() {
         <h2 id="origin" className="font-display text-2xl font-semibold tracking-tight">
           Where it came from
         </h2>
-        {/* Sized to the measure of the text inside it, so the panel is a page rather than a banner. */}
-        <div className="max-w-3xl rounded-2xl border border-border bg-surface px-6 py-8 sm:px-10 sm:py-12">
-          <div className="max-w-[58ch] space-y-5 font-display text-lg leading-[1.75] sm:text-xl">
-            <p>
-              It’s a quarter past eight. Something happened at school today — a friend left out of a
-              game, a toy that never got shared — and there are about four minutes left in which to
-              say something about it that will still be there in the morning.
-            </p>
-            <p>So you go to the shelf. Thirty books. One is about a tractor. None is about this.</p>
-            <p>
-              Every parent has stood in front of that shelf. Story Walker was born there — not to
-              replace the books your child already loves, but to make the one that isn’t on the
-              shelf: the story about this week, this worry, this small thing you want to land
-              gently, while they’re still listening.
-            </p>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] md:items-stretch">
+          <Placeholder
+            seed="shelf"
+            width={700}
+            height={900}
+            alt="Placeholder photograph standing in for a shelf of children’s books"
+            className="h-full max-h-[28rem] w-full rounded-2xl border border-border"
+          />
+          {/* Sized to the measure of the text inside it, so the panel is a page rather than a banner. */}
+          <div className="rounded-2xl border border-border bg-surface px-6 py-8 sm:px-10 sm:py-12">
+            <div className="max-w-[58ch] space-y-5 font-display text-lg leading-[1.75] sm:text-xl">
+              <p>
+                It’s a quarter past eight. Something happened at school today — a friend left out of
+                a game, a toy that never got shared — and there are about four minutes left in which
+                to say something about it that will still be there in the morning.
+              </p>
+              <p>
+                So you go to the shelf. Thirty books. One is about a tractor. None is about this.
+              </p>
+              <p>
+                Every parent has stood in front of that shelf. Story Walker was born there — not to
+                replace the books your child already loves, but to make the one that isn’t on the
+                shelf: the story about this week, this worry, this small thing you want to land
+                gently, while they’re still listening.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -104,6 +165,23 @@ export default function LandingPage() {
             </li>
           ))}
         </ol>
+        {/* Two facing pages, the way the reader shows them. */}
+        <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-2xl border border-border">
+          <Placeholder
+            seed="page-left"
+            width={800}
+            height={800}
+            alt="Placeholder photograph standing in for the left page of a finished story"
+            className="aspect-square w-full"
+          />
+          <Placeholder
+            seed="page-right"
+            width={800}
+            height={800}
+            alt="Placeholder photograph standing in for the right page of a finished story"
+            className="aspect-square w-full"
+          />
+        </div>
       </section>
 
       <section aria-labelledby="why" className="space-y-8">
@@ -146,9 +224,20 @@ export default function LandingPage() {
                 <blockquote className="font-display text-lg leading-[1.6]">
                   “{review.quote}”
                 </blockquote>
-                <figcaption id={`review-${review.name}`} className="text-sm text-muted">
-                  {review.name}, {review.about}
-                </figcaption>
+                {/* The portrait sits beside the caption rather than inside it: within it, its alt
+                    text would become part of the name the quote is announced under. */}
+                <div className="flex items-center gap-3">
+                  <Placeholder
+                    seed={`parent-${review.name}`}
+                    width={96}
+                    height={96}
+                    alt={`Placeholder portrait standing in for ${review.name}`}
+                    className="size-12 shrink-0 rounded-full border border-border"
+                  />
+                  <figcaption id={`review-${review.name}`} className="text-sm text-muted">
+                    {review.name}, {review.about}
+                  </figcaption>
+                </div>
               </figure>
             </li>
           ))}

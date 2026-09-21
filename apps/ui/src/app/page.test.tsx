@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import LandingPage from "./page";
 
 /** A landmark section of the page, found by the heading that names it. */
-const section = (name: string) => within(screen.getByRole("region", { name }));
+const section = (name: string | RegExp) => within(screen.getByRole("region", { name }));
 
 test("invites a visitor to start and links to sign-up", () => {
   render(<LandingPage />);
@@ -53,5 +53,46 @@ test("shows what parents say, each quote with the parent behind it", () => {
   for (const quote of quotes) {
     expect(within(quote).getByRole("blockquote")).toBeInTheDocument();
     expect(within(quote).getByRole("figure")).toHaveAccessibleName(/.+/);
+  }
+});
+
+test("describes every image for a reader who cannot see it", () => {
+  render(<LandingPage />);
+
+  const images = screen.getAllByRole("img");
+  expect(images.length).toBeGreaterThan(0);
+  for (const image of images) expect(image).toHaveAccessibleName(/.+/);
+});
+
+test("opens on a picture, not only on words", () => {
+  render(<LandingPage />);
+
+  expect(section(/tonight/i).getAllByRole("img")).toHaveLength(1);
+});
+
+test("shows the shelf the story begins at", () => {
+  render(<LandingPage />);
+
+  expect(section("Where it came from").getAllByRole("img")).toHaveLength(1);
+});
+
+test("stands a spread of two facing pages beside the steps", () => {
+  render(<LandingPage />);
+
+  expect(section("How it works").getAllByRole("img")).toHaveLength(2);
+});
+
+test("puts a face beside each quote", () => {
+  render(<LandingPage />);
+
+  expect(section("What parents say").getAllByRole("img")).toHaveLength(3);
+});
+
+test("names each quote after its parent, not after the picture beside it", () => {
+  render(<LandingPage />);
+
+  for (const quote of section("What parents say").getAllByRole("listitem")) {
+    const caption = quote.querySelector("figcaption");
+    expect(within(quote).getByRole("figure")).toHaveAccessibleName(caption!.textContent!);
   }
 });
