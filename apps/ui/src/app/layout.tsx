@@ -61,6 +61,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   <Link href="/dashboard" className="text-sm font-semibold hover:text-accent">
                     Your stories
                   </Link>
+                  <Link href="/settings" className="text-sm font-semibold hover:text-accent">
+                    Settings
+                  </Link>
                   <UserButton />
                 </Show>
               </div>

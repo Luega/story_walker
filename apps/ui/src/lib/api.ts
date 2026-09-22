@@ -28,6 +28,17 @@ export interface Story {
   pages: Page[];
 }
 
+/**
+ * The four free-text answers a user saves once, which the story agent reads as defaults at the
+ * start of every new conversation. Null is "not answered", which is why it is not `string`.
+ */
+export interface UserSettings {
+  kids: string | null;
+  story: string | null;
+  characters: string | null;
+  artStyle: string | null;
+}
+
 export type AgentTurn =
   | { kind: "reply"; conversationId: string; reply: string }
   | { kind: "queued"; storyId: string }
@@ -109,4 +120,44 @@ export async function sendAgentMessage(
     kind: "error",
     detail: problem?.detail ?? problem?.title ?? `Server error (${res.status})`,
   };
+}
+
+export async function getUserSettings(): Promise<UserSettings> {
+  const res = await fetch(`${BASE}/me/settings`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load your settings (${res.status})`);
+  return res.json();
+}
+
+/**
+ * Saves all four answers at once — the form always submits the whole set, so an answer the user
+ * cleared arrives blank and is cleared. Returns them as the server stored them (it trims), so the
+ * form can show what was actually persisted rather than the raw input.
+ */
+export async function saveUserSettings(settings: UserSettings): Promise<UserSettings> {
+  const res = await fetch(`${BASE}/me/settings`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+
+  if (!res.ok) {
+    const problem = await res.json().catch(() => null);
+    throw new Error(
+      firstValidationError(problem) ??
+        problem?.detail ??
+        `Failed to save your settings (${res.status})`,
+    );
+  }
+
+  return res.json();
+}
+
+/**
+ * ASP.NET's ValidationProblem puts the readable message inside `errors`, keyed by field, and
+ * leaves `detail` unset — so the one thing worth showing the user is the one thing a naive
+ * `detail ?? title` would miss.
+ */
+function firstValidationError(problem: unknown): string | undefined {
+  const errors = (problem as { errors?: Record<string, string[]> } | null)?.errors;
+  return errors ? Object.values(errors).flat()[0] : undefined;
 }

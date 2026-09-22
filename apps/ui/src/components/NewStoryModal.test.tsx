@@ -151,3 +151,14 @@ describe("closing", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
+
+describe("the saved story settings", () => {
+  it("says the agent already has them, and links to where they are edited", () => {
+    renderModal();
+
+    expect(screen.getByRole("link", { name: /story settings/ })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
+  });
+});

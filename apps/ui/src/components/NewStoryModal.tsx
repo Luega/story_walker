@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { sendAgentMessage } from "@/lib/api";
 
@@ -101,6 +102,17 @@ export function NewStoryModal({
           ×
         </button>
       </div>
+
+      {/* The agent opens by checking facts the user never typed into this chat. Saying where they
+          came from, here rather than on a settings page they may never have seen, is what makes
+          that read as helpful rather than uncanny. */}
+      <p className="border-b border-border px-5 py-2 text-xs text-muted">
+        The agent already has your{" "}
+        <Link href="/settings" className="underline hover:text-foreground">
+          story settings
+        </Link>{" "}
+        and will check them with you first.
+      </p>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {messages.map((m, i) => (

@@ -1,4 +1,4 @@
-import type { Page, Story, StorySummary } from "@/lib/api";
+import type { Page, Story, StorySummary, UserSettings } from "@/lib/api";
 
 // Builders so each test states only the fields it actually cares about; everything else gets a
 // plausible default and stays out of the way.
@@ -34,6 +34,16 @@ export function aStory(overrides: Partial<Story> = {}): Story {
     status: "Complete",
     artStyle: "watercolour",
     pages: [aPage({ pageNo: 1 }), aPage({ pageNo: 2 })],
+    ...overrides,
+  };
+}
+
+export function aUserSettings(overrides: Partial<UserSettings> = {}): UserSettings {
+  return {
+    kids: "Mia is 5 and loves dinosaurs",
+    story: "Short and gentle, always a kind ending",
+    characters: "Pip, a small grey kitten",
+    artStyle: "soft watercolour",
     ...overrides,
   };
 }

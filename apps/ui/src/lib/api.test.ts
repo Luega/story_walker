@@ -1,12 +1,15 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { worker } from "@/test/handlers";
-import { aStory, aStorySummary } from "@/test/factories";
+import { aStory, aStorySummary, aUserSettings } from "@/test/factories";
+import type { UserSettings } from "./api";
 import {
   deleteStory,
   getStory,
+  getUserSettings,
   listStories,
   renameStory,
+  saveUserSettings,
   sendAgentMessage,
 } from "./api";
 
@@ -200,5 +203,91 @@ describe("sendAgentMessage", () => {
       kind: "error",
       detail: "Could not reach the server.",
     });
+  });
+});
+
+describe("getUserSettings", () => {
+  it("returns the saved context", async () => {
+    const settings = aUserSettings({ kids: "Mia is 5 and loves dinosaurs" });
+    worker.use(http.get("/api/me/settings", () => HttpResponse.json(settings)));
+
+    await expect(getUserSettings()).resolves.toEqual(settings);
+  });
+
+  it("asks for a fresh copy rather than a cached one", async () => {
+    let cache: RequestCache | undefined;
+    worker.use(
+      http.get("/api/me/settings", ({ request }) => {
+        cache = request.cache;
+        return HttpResponse.json(aUserSettings());
+      }),
+    );
+
+    await getUserSettings();
+
+    expect(cache).toBe("no-store");
+  });
+
+  it("throws when the API fails", async () => {
+    worker.use(http.get("/api/me/settings", () => new HttpResponse(null, { status: 500 })));
+
+    await expect(getUserSettings()).rejects.toThrow(/500/);
+  });
+});
+
+describe("saveUserSettings", () => {
+  it("sends every field, so a cleared answer is cleared", async () => {
+    let body: UserSettings | undefined;
+    worker.use(
+      http.patch("/api/me/settings", async ({ request }) => {
+        body = (await request.json()) as UserSettings;
+        return HttpResponse.json(body);
+      }),
+    );
+
+    await saveUserSettings(aUserSettings({ kids: "Mia is 5", story: null }));
+
+    expect(body).toEqual({
+      kids: "Mia is 5",
+      story: null,
+      characters: "Pip, a small grey kitten",
+      artStyle: "soft watercolour",
+    });
+  });
+
+  it("returns what the server stored, not what was sent", async () => {
+    const stored = aUserSettings({ kids: "Mia is 5" });
+    worker.use(http.patch("/api/me/settings", () => HttpResponse.json(stored)));
+
+    await expect(saveUserSettings(aUserSettings({ kids: "  Mia is 5  " }))).resolves.toEqual(
+      stored,
+    );
+  });
+
+  // ASP.NET's ValidationProblem carries no `detail`; the message the user needs to read is inside
+  // `errors`, so it has to be dug out rather than replaced with a bare status code.
+  it("surfaces the validation message when an answer is too long", async () => {
+    worker.use(
+      http.patch("/api/me/settings", () =>
+        HttpResponse.json(
+          {
+            title: "One or more validation errors occurred.",
+            status: 400,
+            errors: { artStyle: ["Keep this to 600 characters or fewer."] },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await expect(saveUserSettings(aUserSettings())).rejects.toThrow(
+      /Keep this to 600 characters or fewer/,
+    );
+  });
+
+  it("throws on a server error", async () => {
+    worker.use(http.patch("/api/me/settings", () => new HttpResponse(null, { status: 500 })));
+
+    await expect(saveUserSettings(aUserSettings())).rejects.toThrow(/500/);
   });
 });
