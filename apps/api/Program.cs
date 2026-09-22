@@ -89,5 +89,6 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok("healthy"));
 app.MapStoryEndpoints();
+app.MapUserEndpoints();
 
 app.Run();

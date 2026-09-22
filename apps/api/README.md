@@ -65,10 +65,18 @@ an empty dashboard.
 | `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` unknown or not yours |
 | `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` unknown or not yours |
 | `DELETE /stories/{id}` | Delete a story (pages cascade) | `204`, `404` unknown or not yours |
+| `GET /me/settings` | The caller's standing story context (four free-text answers) | `200`; four nulls before anything is saved |
+| `PATCH /me/settings` | Replace all four answers; blank clears one | `200` stored values, `400` an answer over 600 characters |
 
-Every `/stories` route answers `401` without a valid token.
+Every `/stories` and `/me` route answers `401` without a valid token.
 
 `PATCH` takes `{ "title": "..." }` and returns the updated story.
+
+`PATCH /me/settings` takes `{ "kids", "story", "characters", "artStyle" }` — all four, all nullable
+— and returns them as stored (trimmed, blank as `null`). It is a full replace, not a merge: the
+settings form always submits every field. These four answers are composed into the system prompt of
+each *new* agent conversation and frozen there
+([ADR-0022](../../docs/adr/0022-standing-user-context-in-the-agent-prompt.md)).
 
 After a `202`, poll `GET /stories/{id}`: the story stays `Generating` until the worker in
 [`../functions`](../functions) has rendered the pages, then becomes `Complete` (or `Failed` if no
