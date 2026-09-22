@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StoryWalker.Application.Api;
 using StoryWalker.Domain.Entities;
 using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Persistence;
@@ -22,14 +23,26 @@ internal static class SeedData
         "Luna, a round-faced girl with red curly hair in a yellow raincoat, "
         + "and Pip, a small grey kitten with bright green eyes";
 
-    /// <summary>Inserts a user for the given Clerk subject and returns its id.</summary>
-    public static async Task<Guid> SeedUserAsync(StoryWalkerDbContext db, string clerkUserId)
+    /// <summary>
+    /// Inserts a user for the given Clerk subject and returns its id. Pass
+    /// <paramref name="settings"/> to give them the standing story context the agent composes into
+    /// the system prompt of a new conversation.
+    /// </summary>
+    public static async Task<Guid> SeedUserAsync(
+        StoryWalkerDbContext db,
+        string clerkUserId,
+        UserSettingsDto? settings = null
+    )
     {
         var user = new User
         {
             Id = Guid.NewGuid(),
             ClerkUserId = clerkUserId,
             Email = $"{clerkUserId}@storywalker.app",
+            KidsContext = settings?.Kids,
+            StoryContext = settings?.Story,
+            CharactersContext = settings?.Characters,
+            ArtStyleContext = settings?.ArtStyle,
         };
 
         db.Users.Add(user);

@@ -2,9 +2,11 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using StoryWalker.Application.Agent;
+using StoryWalker.Application.Api;
 using StoryWalker.Application.Brief;
 using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Agent;
+using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Api.Tests;
 
@@ -45,10 +47,149 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
                 [MessageRole.System, MessageRole.User, MessageRole.Assistant],
                 ordered.Select(m => m.Role).ToArray()
             );
+            // This user saved no standing context, so the seeded prompt is the bare
+            // instructions — byte for byte, with no empty context block bolted on.
             Assert.Equal(StoryAgentPrompt.Instructions, ordered[0].Content);
             Assert.Equal("hello", ordered[1].Content);
             Assert.Equal("Hi!", ordered[2].Content);
         });
+    }
+
+    [Fact]
+    public async Task A_users_saved_context_is_composed_into_the_seeded_system_message()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(
+                db,
+                "user_agent_context",
+                new UserSettingsDto(
+                    Kids: "Mia is 5 and loves dinosaurs",
+                    Story: "Short, gentle, always a kind ending",
+                    Characters: "Pip, a small grey kitten with green eyes",
+                    ArtStyle: "soft watercolour"
+                )
+            )
+        );
+
+        var id = await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            var turn = await agent.SendAsync(me, conversationId: null, "hello", Ct);
+            return turn.ConversationId;
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var system = await FirstMessageAsync(db, id);
+
+            Assert.StartsWith(StoryAgentPrompt.Instructions, system, StringComparison.Ordinal);
+            Assert.Contains("Mia is 5 and loves dinosaurs", system, StringComparison.Ordinal);
+            Assert.Contains("Short, gentle, always a kind ending", system, StringComparison.Ordinal);
+            Assert.Contains("Pip, a small grey kitten", system, StringComparison.Ordinal);
+            Assert.Contains("soft watercolour", system, StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>
+    /// The context is read once, when the conversation is created, and lives on as its first
+    /// persisted message — so editing the settings page cannot move the ground under a chat that is
+    /// already under way. This is the whole mechanism behind that guarantee, so it is pinned.
+    /// </summary>
+    [Fact]
+    public async Task Editing_settings_does_not_change_a_conversation_already_under_way()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(
+                db,
+                "user_agent_context_frozen",
+                new UserSettingsDto("Mia is 5", null, null, "soft watercolour")
+            )
+        );
+
+        var id = await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            var turn = await agent.SendAsync(me, conversationId: null, "one", Ct);
+            return turn.ConversationId;
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var user = await db.Users.SingleAsync(u => u.Id == me, Ct);
+            user.KidsContext = "Leo is 7";
+            user.ArtStyleContext = "crayon";
+            await db.SaveChangesAsync(Ct);
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            await agent.SendAsync(me, id, "two", Ct);
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var system = await FirstMessageAsync(db, id);
+
+            Assert.Contains("Mia is 5", system, StringComparison.Ordinal);
+            Assert.Contains("soft watercolour", system, StringComparison.Ordinal);
+            Assert.DoesNotContain("Leo is 7", system, StringComparison.Ordinal);
+            Assert.DoesNotContain("crayon", system, StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>A new conversation started afterwards does pick the edited context up.</summary>
+    [Fact]
+    public async Task A_conversation_started_after_an_edit_uses_the_new_context()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(
+                db,
+                "user_agent_context_fresh",
+                new UserSettingsDto("Mia is 5", null, null, null)
+            )
+        );
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            await agent.SendAsync(me, conversationId: null, "first story", Ct);
+
+            var user = await db.Users.SingleAsync(u => u.Id == me, Ct);
+            user.KidsContext = "Leo is 7";
+            await db.SaveChangesAsync(Ct);
+        });
+
+        var second = await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            var turn = await agent.SendAsync(me, conversationId: null, "second story", Ct);
+            return turn.ConversationId;
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var system = await FirstMessageAsync(db, second);
+
+            Assert.Contains("Leo is 7", system, StringComparison.Ordinal);
+            Assert.DoesNotContain("Mia is 5", system, StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>Content of the conversation's first message, which is always the system prompt.</summary>
+    private static async Task<string> FirstMessageAsync(
+        StoryWalkerDbContext db,
+        string conversationId
+    )
+    {
+        var conversation = await db
+            .Conversations.Include(c => c.Messages)
+            .SingleAsync(c => c.Id == Guid.Parse(conversationId), Ct);
+
+        return conversation.Messages.OrderBy(m => m.Seq).First().Content;
     }
 
     [Fact]

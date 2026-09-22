@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using StoryWalker.Application.Agent;
+using StoryWalker.Application.Api;
 using StoryWalker.Application.Brief;
 using StoryWalker.Domain.Entities;
 using StoryWalker.Domain.Enums;
@@ -13,7 +14,8 @@ namespace StoryWalker.Infrastructure.Agent;
 /// concrete SDK; the registered client is a Foundry chat-model deployment (ADR-0011).
 /// Conversation history is persisted (ADR-0018) so it survives restarts and multiple instances;
 /// each turn loads the stored messages, sends the full history to the model, and appends the new
-/// turns. A new conversation is seeded with the <see cref="StoryAgentPrompt"/> system message.
+/// turns. A new conversation is seeded with the <see cref="StoryAgentPrompt"/> system message,
+/// composed with whatever standing context the user has saved on their settings page.
 /// </summary>
 public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) : IStoryAgent
 {
@@ -34,7 +36,22 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
                 Status = ConversationStatus.Active,
             };
             db.Conversations.Add(conversation);
-            Append(conversation, MessageRole.System, StoryAgentPrompt.Instructions);
+
+            // The user's standing context, read here and only here. Composing it into the system
+            // message means the conversation keeps the context it started with: editing the
+            // settings page never rewrites a chat already under way, because this message is
+            // persisted (ADR-0018) and never recomputed. One extra query, on the first turn only.
+            var settings = await db
+                .Users.Where(u => u.Id == userId)
+                .Select(u => new UserSettingsDto(
+                    u.KidsContext,
+                    u.StoryContext,
+                    u.CharactersContext,
+                    u.ArtStyleContext
+                ))
+                .FirstOrDefaultAsync(ct);
+
+            Append(conversation, MessageRole.System, StoryAgentPrompt.Compose(settings));
         }
         else
         {
@@ -64,7 +81,9 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
             Append(conversation, ToMessageRole(reply.Role), reply.Text);
         }
 
-        var briefReady = response.Messages.Any(m => m.Text.Contains("__END__CHAT__"));
+        var briefReady = response.Messages.Any(m =>
+            m.Text.Contains(StoryAgentPrompt.EndOfChatSentinel, StringComparison.Ordinal)
+        );
         conversation.Status = briefReady ? ConversationStatus.Completed : ConversationStatus.Active;
 
         // Author the brief in the same turn the user confirms, so BriefReady and the brief arrive
