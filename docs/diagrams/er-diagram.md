@@ -23,6 +23,10 @@ erDiagram
         string clerk_user_id UK "identity from Clerk (ADR-0002)"
         string email
         string tier "subscription plan; Free is the only one so far"
+        text kids_context "standing context for the agent (ADR-0022); nullable"
+        text story_context "standing context for the agent (ADR-0022); nullable"
+        text characters_context "standing context for the agent (ADR-0022); nullable"
+        text art_style_context "standing context for the agent (ADR-0022); nullable"
     }
 
     STORY {
@@ -90,5 +94,9 @@ erDiagram
   per row (no chunk-level retrieval); a separate chunk table would be reintroduced only if
   long/chaptered stories later need passage-level search. Query the vector column only when
   doing similarity search. Scoped by owner.
+- **Standing context.** The four `*_context` columns on `USER` are free text the user saves once
+  on their settings page. They are composed into the system message of every *new* agent
+  conversation and frozen there, so editing them never rewrites a chat in flight
+  ([ADR-0022](../adr/0022-standing-user-context-in-the-agent-prompt.md)).
 - **Images** are bytes in Blob Storage; the DB stores only URLs (`PAGE.image_url`,
   `CHARACTER.reference_image_url`) — ADR-0010.
