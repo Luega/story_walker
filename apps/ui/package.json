@@ -13,6 +13,7 @@
   "dependencies": {
     "@azure/monitor-opentelemetry": "^1.20.0",
     "@clerk/nextjs": "^7.9.4",
+    "@microsoft/applicationinsights-web": "^3.4.4",
     "@opentelemetry/instrumentation": "^0.222.0",
     "@opentelemetry/instrumentation-undici": "^0.32.0",
     "@opentelemetry/resources": "^2.11.0",
