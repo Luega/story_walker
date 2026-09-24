@@ -1,3 +1,4 @@
+using System.ClientModel;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -287,6 +288,90 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
         );
     }
 
+    // What the OpenAI SDK throws when Azure's content filter refuses the prompt: a 400 whose error
+    // code is content_filter, carried in the message it builds ("HTTP {status} ({type}: {code})").
+    private const string ContentFilterError =
+        "HTTP 400 (: content_filter)\n\nThe response was filtered due to the prompt triggering Azure OpenAI's content management policy.";
+
+    [Fact]
+    public async Task A_message_the_content_filter_refuses_throws_and_leaves_the_history_untouched()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
+
+        var id = await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(db, new StubChatClient());
+            var turn = await agent.SendAsync(me, conversationId: null, "hello", Ct);
+            return turn.ConversationId;
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(
+                db,
+                new StubChatClient { Throws = new ClientResultException(ContentFilterError) }
+            );
+            await Assert.ThrowsAsync<ContentFilteredException>(
+                () => agent.SendAsync(me, id, "something unsuitable", Ct)
+            );
+        });
+
+        // Only the first turn survives: system, user, assistant. Had the refused message been
+        // kept, every later turn would resend it and be refused again.
+        await _factory.ExecuteDbAsync(async db =>
+            Assert.Equal(
+                3,
+                await db.ConversationMessages.CountAsync(m => m.ConversationId == Guid.Parse(id), Ct)
+            )
+        );
+    }
+
+    [Fact]
+    public async Task A_reply_the_content_filter_stops_throws_and_rolls_back_the_turn()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(
+                db,
+                new StubChatClient { Reply = "", FinishReason = ChatFinishReason.ContentFilter }
+            );
+            await Assert.ThrowsAsync<ContentFilteredException>(
+                () => agent.SendAsync(me, conversationId: null, "tell me a story", Ct)
+            );
+        });
+
+        await _factory.ExecuteDbAsync(async db =>
+            Assert.Equal(0, await db.Conversations.CountAsync(Ct))
+        );
+    }
+
+    [Fact]
+    public async Task Other_model_errors_are_not_mistaken_for_a_content_filter_refusal()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            var agent = new StoryAgent(
+                db,
+                new StubChatClient
+                {
+                    Throws = new ClientResultException(
+                        "HTTP 400 (invalid_request_error: context_length_exceeded)"
+                    ),
+                }
+            );
+            await Assert.ThrowsAsync<ClientResultException>(
+                () => agent.SendAsync(me, conversationId: null, "hello", Ct)
+            );
+        });
+    }
+
     [Fact]
     public async Task Turn_on_completed_conversation_returns_already_completed_without_appending()
     {
@@ -406,17 +491,30 @@ public sealed class StoryAgentTests(StoryWalkerApiFactory factory)
         /// <summary>The brief JSON returned on the authoring call; a valid one by default.</summary>
         public GenerationBrief Brief { get; init; } = ValidBrief;
 
+        /// <summary>When set, every call throws this, as the SDK does for an error response.</summary>
+        public Exception? Throws { get; init; }
+
+        /// <summary>The finish reason reported on every response; null, as most providers leave it.</summary>
+        public ChatFinishReason? FinishReason { get; init; }
+
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
             CancellationToken cancellationToken = default
         )
         {
+            if (Throws is not null)
+            {
+                throw Throws;
+            }
+
             var text =
                 options?.ResponseFormat is ChatResponseFormatJson
                     ? JsonSerializer.Serialize(Brief, AIJsonUtilities.DefaultOptions)
                     : Reply;
-            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, text)));
+            return Task.FromResult(
+                new ChatResponse(new ChatMessage(ChatRole.Assistant, text)) { FinishReason = FinishReason }
+            );
         }
 
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(

@@ -1,3 +1,4 @@
+using System.ClientModel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using StoryWalker.Application.Agent;
@@ -74,7 +75,9 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
             .Select(m => new ChatMessage(ToChatRole(m.Role), m.Content))
             .ToList();
 
-        var response = await chatClient.GetResponseAsync(history, cancellationToken: ct);
+        var response = await RefusalAwareAsync(
+            () => chatClient.GetResponseAsync(history, cancellationToken: ct)
+        );
 
         foreach (var reply in response.Messages)
         {
@@ -132,9 +135,8 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         IReadOnlyList<string> errors = [];
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            var response = await chatClient.GetResponseAsync<GenerationBrief>(
-                messages,
-                cancellationToken: ct
+            var response = await RefusalAwareAsync(
+                () => chatClient.GetResponseAsync<GenerationBrief>(messages, cancellationToken: ct)
             );
 
             if (response.TryGetResult(out var brief))
@@ -152,6 +154,31 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         }
 
         throw new BriefValidationException(errors);
+    }
+
+    /// <summary>
+    /// Runs one model call and turns a content-filter refusal into
+    /// <see cref="ContentFilteredException"/> (ADR-0024). Azure refuses in two ways: a filtered
+    /// prompt is a 400 whose error code is <c>content_filter</c>, and a filtered reply comes back
+    /// with that finish reason. Both surface before <c>SaveChanges</c>, so the turn rolls back.
+    /// </summary>
+    private static async Task<TResponse> RefusalAwareAsync<TResponse>(Func<Task<TResponse>> call)
+        where TResponse : ChatResponse
+    {
+        TResponse response;
+        try
+        {
+            response = await call();
+        }
+        catch (ClientResultException ex)
+            when (ex.Message.Contains("content_filter", StringComparison.Ordinal))
+        {
+            throw new ContentFilteredException(ex);
+        }
+
+        return response.FinishReason == ChatFinishReason.ContentFilter
+            ? throw new ContentFilteredException()
+            : response;
     }
 
     /// <summary>
