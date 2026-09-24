@@ -1,6 +1,9 @@
+using Azure.Monitor.OpenTelemetry.Exporter;
+using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry;
 using StoryWalker.Infrastructure;
 
 // Isolated-worker host for the generation worker. ConfigureFunctionsWorkerDefaults wires the
@@ -30,6 +33,30 @@ var host = new HostBuilder()
             );
 
             services.AddGeneration();
+
+            // Telemetry to Application Insights (ADR-0023), opt-in exactly as in the API: no
+            // connection string, nothing registered. The distro is ASP.NET Core-only, so the
+            // worker assembles the same thing by hand: the Functions integration (invocation spans
+            // parented on the Service Bus message's trace), the exporter (traces, metrics and
+            // ILogger), and the two sources the distro would have added itself.
+            var appInsights = config["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+            if (!string.IsNullOrWhiteSpace(appInsights))
+            {
+                // The Azure SDK's ActivitySource support is still behind this switch; without it
+                // the Blob uploads are invisible.
+                AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+
+                services
+                    .AddOpenTelemetry()
+                    .UseFunctionsWorkerDefaults()
+                    .UseAzureMonitorExporter(options => options.ConnectionString = appInsights)
+                    .WithTracing(tracing =>
+                        tracing
+                            // Foundry image calls go through a plain HttpClient.
+                            .AddSource("System.Net.Http")
+                            .AddSource("Azure.*")
+                    );
+            }
         }
     )
     .Build();

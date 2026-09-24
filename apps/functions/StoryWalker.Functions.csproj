@@ -17,6 +17,11 @@
     <PackageReference Include="Azure.Messaging.ServiceBus" />
   </ItemGroup>
 
+  <ItemGroup Label="Telemetry (ADR-0023)">
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.OpenTelemetry" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Shares the brief contract + queue name with the producer (ADR-0012/0013). -->
     <ProjectReference Include="..\..\src\StoryWalker.Application\StoryWalker.Application.csproj" />
