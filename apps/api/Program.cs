@@ -1,3 +1,4 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using StoryWalker.Api.Auth;
 using StoryWalker.Api.Endpoints;
@@ -61,6 +62,19 @@ if (authorizedParties.Length == 0)
 }
 
 builder.Services.AddClerkAuthentication(clerkAuthority, authorizedParties);
+
+// Telemetry to Application Insights (ADR-0023): requests, outgoing HTTP (Foundry), Azure SDK calls
+// (Service Bus), exceptions and ILogger output, all under one W3C trace. Opt-in: with no connection
+// string nothing is registered, so the local loop and the tests run exactly as before. Blank counts
+// as unset for the same compose reason as above. Sampling is the distro default; change it here
+// through AzureMonitorOptions once traffic makes it worth it.
+var appInsightsConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    builder
+        .Services.AddOpenTelemetry()
+        .UseAzureMonitor(options => options.ConnectionString = appInsightsConnectionString);
+}
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<CurrentUser>();
