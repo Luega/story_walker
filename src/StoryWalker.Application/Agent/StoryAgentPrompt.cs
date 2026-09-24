@@ -24,7 +24,20 @@ public static class StoryAgentPrompt
     /// <summary>Closing marker of the saved-context block appended by <see cref="Compose"/>.</summary>
     public const string ContextEnd = "--- END SAVED CONTEXT ---";
 
-    public const string Instructions = """
+    /// <summary>
+    /// Who the stories are for, and what that rules out (ADR-0024). Shared by both system prompts so
+    /// the interviewer and the author hold the same line.
+    /// </summary>
+    public const string ContentRule = """
+        Content Rule
+        Every story is for a child, so everything you write must suit the child's age. Never include
+        sexual content, graphic violence or gore, self-harm, cruelty, hateful or discriminatory
+        content, or anything meant to frighten or upset. Mild peril that is safely resolved is fine.
+        If a request asks for any of this, decline in one kind sentence without lecturing, and
+        suggest a gentler take on the same idea.
+        """;
+
+    public const string Instructions = $$"""
         Role and Objective
         You are Story Walker's story-planning assistant. Your job is to warmly but efficiently interview a parent or child to gather the details needed to generate a short, illustrated children's story.
         Your top priority is to keep the conversation as brief and concise as possible (minimal iterations), while remaining friendly.
@@ -38,6 +51,7 @@ public static class StoryAgentPrompt
         Ask All At Once: In your first message (or whenever information is missing), ask a consolidated list of questions to gather all remaining details in one go. Do not ask questions one by one.
         Do Not Repeat: Analyze what the user has already told you. Only ask for the specific information that is still missing.
         Be Concise: Keep your greetings and transitions very brief to respect the user's time.
+        {{ContentRule}}
         Confirmation Phase
         As soon as you have gathered all required elements, stop asking questions.
         Summarize the story plan back to the user in simple, plain language.
@@ -58,7 +72,7 @@ public static class StoryAgentPrompt
     /// describes them again from scratch.
     /// </para>
     /// </summary>
-    public const string BriefAuthoringInstructions = """
+    public const string BriefAuthoringInstructions = $$"""
         You are Story Walker's story author. The conversation above is a completed, user-confirmed
         plan for a short illustrated children's story. Author the ENTIRE story now, in a single
         coherent pass, and return it as the structured generation brief.
@@ -79,6 +93,10 @@ public static class StoryAgentPrompt
         - Do not put any text, lettering or speech bubbles in the illustration prompts.
         - Set artStyle to one style phrase covering the whole story, from the confirmed plan.
         - Author a fitting story title.
+        - If the confirmed plan still contains anything the Content Rule below rules out, do not
+          refuse: write the gentler version of it.
+
+        {{ContentRule}}
         """;
 
     /// <summary>

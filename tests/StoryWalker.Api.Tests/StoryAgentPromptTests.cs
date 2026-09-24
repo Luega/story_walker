@@ -10,6 +10,25 @@ namespace StoryWalker.Api.Tests;
 /// </summary>
 public sealed class StoryAgentPromptTests
 {
+    // The rule is what asks the model to write for a child's age; the Foundry filter alone blocks
+    // only medium severity and up (ADR-0024). The interviewer and the author are separate calls
+    // with separate system prompts, so dropping it from either one reopens the gap.
+    [Fact]
+    public void The_interview_prompt_carries_the_content_rule()
+    {
+        Assert.Contains(StoryAgentPrompt.ContentRule, StoryAgentPrompt.Instructions, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_brief_authoring_prompt_carries_the_content_rule()
+    {
+        Assert.Contains(
+            StoryAgentPrompt.ContentRule,
+            StoryAgentPrompt.BriefAuthoringInstructions,
+            StringComparison.Ordinal
+        );
+    }
+
     [Fact]
     public void No_settings_leaves_the_instructions_byte_identical()
     {
