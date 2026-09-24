@@ -28,6 +28,7 @@ ignore rule and never reach the repository.
 | `Foundry:Deployment` | **you fill in** | The **chat** model deployment the agent runs on. The worker uses a different, image deployment on the same resource. |
 | `Foundry:ApiKey` | optional | Leave empty to authenticate with your own `az login`. **Secret** — never commit a real value. |
 | `ServiceBus:ConnectionString` | emulator string | The emulator key is a public placeholder, not a secret. |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | optional | Blank or absent: no telemetry. Set: requests, dependencies (Postgres, Service Bus, Foundry), exceptions and logs go to Application Insights ([ADR-0023](../../docs/adr/0023-opentelemetry-to-application-insights.md)). Top-level key, no section. |
 
 Running the API **in a container** instead reads the same settings from environment variables
 (`Foundry__Endpoint`, …) set by `docker-compose.yml` from a root `.env` file — copy

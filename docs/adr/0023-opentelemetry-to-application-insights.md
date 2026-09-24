@@ -79,12 +79,18 @@ Three sub-decisions carry the design:
 - **The browser connection string is public.** It ships in the client bundle by design. It is an
   ingestion key, so someone could send fake telemetry but not read any. That is the accepted
   trade-off of client-side monitoring.
+- **No Users or Sessions counts from the browser.** The SDK's `ai_user` and `ai_session` cookies
+  are off (`disableCookiesUsage`), because they are analytics cookies and the app has no consent
+  banner.
 - Four SDKs on two stacks to keep current, and the Microsoft.Extensions.AI source name is still
   `Experimental.` prefixed, so it may move.
 
 ### Things this decision obliges us to build or watch
 - **The no-content rule is a code-review rule.** Nothing enforces it. A structured log parameter
   named `{Title}` or `{Prompt}` is the thing to catch.
+- **The browser keeps same-origin dependencies only.** A telemetry initializer drops the rest. The
+  only other origin today is Clerk, whose URLs carry a session token in the query string
+  (`__clerk_db_jwt`). A new third-party call from the browser is filtered out by that same rule.
 - A **daily cap** on the Log Analytics workspace when the resource is created, so a logging loop
   cannot become a bill.
 - The resource itself, and handing its connection string to the hosted apps, belong to the IaC work

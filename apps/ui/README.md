@@ -26,3 +26,15 @@ creating stories, and the live story viewer (Azure SignalR).
 
 The browser only calls `/api/*`, which `next.config.ts` rewrites to `API_URL` — so the API needs
 no CORS policy. Override the target with `API_URL` (see `.env.example`), e.g. in `.env.local`.
+
+## Telemetry
+
+Off unless configured ([ADR-0023](../../docs/adr/0023-opentelemetry-to-application-insights.md)).
+Put the Application Insights connection string in both variables in `.env.local`:
+
+- `APPLICATIONINSIGHTS_CONNECTION_STRING`: the Next server (`src/instrumentation.ts`). It sends
+  requests, render spans, and the proxy's call to the API, which carries `traceparent`.
+- `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING`: the browser
+  (`src/instrumentation-client.ts`). It sends page views, unhandled errors, and same-origin
+  fetches. It is inlined at **build** time, so a production image needs it set when `next build`
+  runs.

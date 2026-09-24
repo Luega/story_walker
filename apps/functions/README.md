@@ -76,8 +76,10 @@ as `docker-compose.yml` already does.
 | `Storage:ConnectionString` | `Program.cs` | `UseDevelopmentStorage=true` | Where page images go (ADR-0010). Same azurite account as `AzureWebJobsStorage`, different container. |
 | `Storage:Container` | `Program.cs` | `story-images` | Defaults to `story-images` if omitted. |
 | `Storage:PublicBaseUrl` | `Program.cs` | `http://localhost:10000/devstoreaccount1` | Base of the image URL saved on each page. In Azure: `https://<account>.blob.core.windows.net`. |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | host and `Program.cs` | empty | Optional. Set, both the host (`telemetryMode` in `host.json`) and the worker send telemetry to Application Insights, each invocation joined to the trace of the API request that queued the brief ([ADR-0023](../../docs/adr/0023-opentelemetry-to-application-insights.md)). |
 
-Every key read by `Program.cs` except `Foundry:ApiKey` and `Storage:Container` is **required**: the
+Every key read by `Program.cs` except `Foundry:ApiKey`, `Storage:Container` and
+`APPLICATIONINSIGHTS_CONNECTION_STRING` is **required**: the
 worker refuses to start without it, rather than starting and failing on the first message.
 
 `Storage:PublicBaseUrl` is deliberately separate from the storage connection string: inside compose
