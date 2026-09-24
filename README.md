@@ -73,3 +73,4 @@ story_walker/                       # monorepo root
 - [0020 — A plain Service Bus function instead of Durable Functions](docs/adr/0020-plain-service-bus-function-for-generation.md)
 - [0021 — Clerk integration: server-side token proxy and JIT provisioning](docs/adr/0021-clerk-integration.md)
 - [0022 — Standing user context in the agent's system prompt](docs/adr/0022-standing-user-context-in-the-agent-prompt.md)
+- [0023 — OpenTelemetry to Application Insights, end to end](docs/adr/0023-opentelemetry-to-application-insights.md)
