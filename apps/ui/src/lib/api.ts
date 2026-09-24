@@ -114,7 +114,8 @@ export async function sendAgentMessage(
   }
   if (res.status === 404) return { kind: "notFound" };
 
-  // ProblemDetails (502 invalid brief, 503 no user, 400 validation) carry a human-readable detail.
+  // ProblemDetails (502 invalid brief, 503 no user, 400 validation, 422 content filter) carry a
+  // human-readable detail.
   const problem = await res.json().catch(() => null);
   return {
     kind: "error",

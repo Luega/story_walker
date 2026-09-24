@@ -96,6 +96,16 @@ public static class StoryEndpoints
                     {
                         return Results.NotFound();
                     }
+                    catch (ContentFilteredException)
+                    {
+                        // The model's content filter refused the turn, which was rolled back, so
+                        // the parent can simply send something else (ADR-0024). The UI shows the
+                        // detail as-is, so it says what to do rather than what went wrong.
+                        return Results.Problem(
+                            detail: "Story Walker only writes stories that are right for children, so it can't help with that. Please rephrase your message and try again.",
+                            statusCode: StatusCodes.Status422UnprocessableEntity
+                        );
+                    }
                     catch (BriefValidationException ex)
                     {
                         // The agent confirmed but produced an unusable brief; the turn was rolled

@@ -61,7 +61,7 @@ an empty dashboard.
 | Method & route | Purpose | Responses |
 | --- | --- | --- |
 | `GET /health` | Liveness probe | `200` `"healthy"` |
-| `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `502` unusable brief |
+| `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `422` refused by the content filter (ADR-0024), `502` unusable brief |
 | `GET /stories` | The caller's story summaries | `200` |
 | `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` unknown or not yours |
 | `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` unknown or not yours |

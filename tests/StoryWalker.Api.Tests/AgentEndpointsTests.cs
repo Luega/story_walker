@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StoryWalker.Application.Api;
 using StoryWalker.Domain.Enums;
@@ -69,6 +70,22 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_message_the_content_filter_refuses_returns_422_asking_to_rephrase()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/stories/conversations",
+            new AgentMessageRequest(ConversationId: null, Message: FakeStoryAgent.FilteredMessage),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        // The UI shows ProblemDetails.detail as-is, so it has to be something a parent can act on.
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(Ct);
+        Assert.NotNull(problem);
+        Assert.Contains("rephrase", problem.Detail, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

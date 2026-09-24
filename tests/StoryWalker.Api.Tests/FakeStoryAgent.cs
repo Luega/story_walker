@@ -9,12 +9,17 @@ namespace StoryWalker.Api.Tests;
 /// chat backend. It mints an id on the first turn and echoes the same id thereafter, and mirrors
 /// the real agent's not-found behaviour: an id it never issued, or issued to another user, throws
 /// <see cref="ConversationNotFoundException"/> (so the endpoint's 404 path is covered). Sending
-/// <see cref="ConfirmMessage"/> makes it emit a ready brief, driving the endpoint's enqueue path.
+/// <see cref="ConfirmMessage"/> makes it emit a ready brief, driving the endpoint's enqueue path;
+/// sending <see cref="FilteredMessage"/> makes it throw <see cref="ContentFilteredException"/>, as the
+/// real agent does when the model's content filter refuses a turn.
 /// </summary>
 internal sealed class FakeStoryAgent : IStoryAgent
 {
     /// <summary>Sentinel message that makes the fake agent return a ready brief.</summary>
     public const string ConfirmMessage = "confirm-brief";
+
+    /// <summary>Sentinel message that makes the fake agent report a content-filter refusal.</summary>
+    public const string FilteredMessage = "filtered-by-content-policy";
 
     /// <summary>
     /// The brief the fake agent emits on <see cref="ConfirmMessage"/>. Six pages, because
@@ -52,6 +57,11 @@ internal sealed class FakeStoryAgent : IStoryAgent
         )
         {
             throw new ConversationNotFoundException(conversationId);
+        }
+
+        if (message == FilteredMessage)
+        {
+            throw new ContentFilteredException();
         }
 
         var id = conversationId ?? Guid.NewGuid().ToString();
