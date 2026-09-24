@@ -11,6 +11,7 @@
 // It is an ingestion key: anyone holding it can send telemetry, but nobody can read any.
 
 import { ApplicationInsights, DistributedTracingModes } from "@microsoft/applicationinsights-web";
+import { COOKIE_CONSENT_EVENT, readCookieConsent, type CookieConsent } from "@/lib/cookieConsent";
 
 let appInsights: ApplicationInsights | undefined;
 
@@ -26,9 +27,10 @@ if (connectionString) {
         // Headers carry Clerk's session and our own content types; neither belongs in telemetry.
         enableRequestHeaderTracking: false,
         enableResponseHeaderTracking: false,
-        // No ai_user / ai_session cookies: they are analytics cookies, and the app has no consent
-        // banner to ask for them. The cost is that Users and Sessions counts are unavailable.
-        disableCookiesUsage: true,
+        // ai_user / ai_session are analytics cookies: off until the visitor accepts them in the
+        // banner (components/CookieConsent.tsx). Without them telemetry still flows, but Users and
+        // Sessions cannot be counted.
+        cookieCfg: { enabled: readCookieConsent() === "accepted" },
       },
     });
     appInsights.loadAppInsights();
@@ -45,6 +47,11 @@ if (connectionString) {
       // The role name on the Application Map, next to storywalker-ui (the Next server).
       item.tags = item.tags ?? {};
       item.tags["ai.cloud.role"] = "storywalker-browser";
+    });
+
+    // An answer given (or changed) while the page is open applies at once.
+    window.addEventListener(COOKIE_CONSENT_EVENT, (event) => {
+      applyCookieConsent((event as CustomEvent<CookieConsent>).detail);
     });
 
     // The first load; onRouterTransitionStart below covers every navigation after it.
@@ -65,4 +72,17 @@ export function onRouterTransitionStart(url: string) {
 // previous page's, and every page shares one anyway.
 function trackPageView(uri: string) {
   appInsights?.trackPageView({ name: new URL(uri).pathname, uri });
+}
+
+function applyCookieConsent(consent: CookieConsent) {
+  const cookies = appInsights?.getCookieMgr();
+  if (!cookies) return;
+
+  cookies.setEnabled(consent === "accepted");
+  if (consent === "rejected") {
+    // Withdrawing consent has to remove what was set under it, not only stop setting more. purge
+    // works even with the manager disabled, which it now is.
+    cookies.purge("ai_user");
+    cookies.purge("ai_session");
+  }
 }
