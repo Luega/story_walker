@@ -79,9 +79,12 @@ Three sub-decisions carry the design:
 - **The browser connection string is public.** It ships in the client bundle by design. It is an
   ingestion key, so someone could send fake telemetry but not read any. That is the accepted
   trade-off of client-side monitoring.
-- **No Users or Sessions counts from the browser.** The SDK's `ai_user` and `ai_session` cookies
-  are off (`disableCookiesUsage`), because they are analytics cookies and the app has no consent
-  banner.
+- **Users and Sessions counts cover only visitors who accept analytics cookies.** The SDK's
+  `ai_user` and `ai_session` cookies are analytics cookies, so they need consent first. A banner
+  (`components/CookieConsent.tsx`) asks for it, with Accept and Reject given equal weight and a
+  "Cookie preferences" footer link to change the answer. Until a visitor accepts, their telemetry
+  flows without cookies. Rejecting later purges both cookies. The banner is one more thing on
+  screen for every new visitor, and it is shown only when browser telemetry is built in.
 - Four SDKs on two stacks to keep current, and the Microsoft.Extensions.AI source name is still
   `Experimental.` prefixed, so it may move.
 

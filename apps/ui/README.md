@@ -37,4 +37,5 @@ Put the Application Insights connection string in both variables in `.env.local`
 - `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING`: the browser
   (`src/instrumentation-client.ts`). It sends page views, unhandled errors, and same-origin
   fetches. It is inlined at **build** time, so a production image needs it set when `next build`
-  runs.
+  runs. Setting it also turns on the analytics-cookie banner. The `ai_user` and `ai_session`
+  cookies are written only after a visitor accepts, and the choice is kept in `localStorage`.
