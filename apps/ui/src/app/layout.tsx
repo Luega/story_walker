@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
+import { CookieConsent } from "@/components/CookieConsent";
 import { Fraunces, Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -70,6 +71,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </header>
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
+          {/* Footer link and consent banner; renders nothing without browser telemetry. */}
+          <CookieConsent />
         </ClerkProvider>
       </body>
     </html>
