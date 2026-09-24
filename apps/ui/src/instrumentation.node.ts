@@ -4,6 +4,8 @@
 
 // Renamed on import: it is not a React hook, but the name trips react-hooks/rules-of-hooks.
 import { useAzureMonitor as startAzureMonitor } from "@azure/monitor-opentelemetry";
+import { registerInstrumentations } from "@opentelemetry/instrumentation";
+import { UndiciInstrumentation } from "@opentelemetry/instrumentation-undici";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 
 // The Application Insights role name: what this process is called on the Application Map, next to
@@ -16,3 +18,9 @@ startAzureMonitor({
   },
   resource,
 });
+
+// The proxy route forwards to the API with fetch, which in Node is undici - and the SDK's HTTP
+// instrumentation only sees the older http module. Without this there is no dependency span for the
+// API call and, worse, no traceparent header on it, so the API starts a fresh trace and the browser
+// and the API show up as two unrelated operations.
+registerInstrumentations({ instrumentations: [new UndiciInstrumentation()] });
