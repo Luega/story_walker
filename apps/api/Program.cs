@@ -1,5 +1,6 @@
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using StoryWalker.Api.Auth;
 using StoryWalker.Api.Endpoints;
 using StoryWalker.Infrastructure;
@@ -73,7 +74,10 @@ if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
 {
     builder
         .Services.AddOpenTelemetry()
-        .UseAzureMonitor(options => options.ConnectionString = appInsightsConnectionString);
+        .UseAzureMonitor(options => options.ConnectionString = appInsightsConnectionString)
+        // The distro has no Postgres instrumentation of its own. Npgsql's spans carry the
+        // parameterised SQL, never the parameter values.
+        .WithTracing(tracing => tracing.AddNpgsql());
 }
 
 builder.Services.AddHttpContextAccessor();
