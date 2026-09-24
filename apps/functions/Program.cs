@@ -3,6 +3,7 @@ using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using OpenTelemetry;
 using StoryWalker.Infrastructure;
@@ -12,6 +13,11 @@ using StoryWalker.Infrastructure;
 // model plus the Foundry and Blob adapters (ADR-0020).
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
+    // One log line per SQL statement, and the same queries already arrive as Npgsql spans. The
+    // API sets this in appsettings.json; the worker has no such file (ADR-0023).
+    .ConfigureLogging(logging =>
+        logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
+    )
     .ConfigureServices(
         (context, services) =>
         {
