@@ -77,7 +77,13 @@ if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
         .UseAzureMonitor(options => options.ConnectionString = appInsightsConnectionString)
         // The distro has no Postgres instrumentation of its own. Npgsql's spans carry the
         // parameterised SQL, never the parameter values.
-        .WithTracing(tracing => tracing.AddNpgsql());
+        .WithTracing(tracing =>
+            tracing
+                .AddNpgsql()
+                // The agent's gen_ai spans (AddFoundryChat). The prefix is Microsoft's, and will
+                // drop once the GenAI semantic conventions are stable.
+                .AddSource("Experimental.Microsoft.Extensions.AI")
+        );
 }
 
 builder.Services.AddHttpContextAccessor();

@@ -85,7 +85,16 @@ public static class DependencyInjection
                 ? new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential())
                 : new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
 
-            return client.GetChatClient(deployment).AsIChatClient();
+            // A gen_ai span per turn, with the model, token counts and finish reason (ADR-0023).
+            // Nothing listens unless the host registered telemetry, so this is free when it is off.
+            // Sensitive data stays off explicitly — otherwise an OTEL_* environment variable could
+            // switch it on — because the messages are a parent's words about their children.
+            return client
+                .GetChatClient(deployment)
+                .AsIChatClient()
+                .AsBuilder()
+                .UseOpenTelemetry(configure: otel => otel.EnableSensitiveData = false)
+                .Build();
         });
         services.AddScoped<IStoryAgent, StoryAgent>();
 
