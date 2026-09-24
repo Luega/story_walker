@@ -50,6 +50,16 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Observability">
+    <!-- Full telemetry to Application Insights over OpenTelemetry (ADR-0023). The API uses the
+         Azure Monitor distro; the isolated worker cannot, so it pairs the Functions OTel
+         integration with the bare exporter. Neither distro instruments Npgsql, hence the third. -->
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.9.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.OpenTelemetry" Version="1.2.0" />
+    <PackageVersion Include="Npgsql.OpenTelemetry" Version="10.0.3" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
