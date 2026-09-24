@@ -3,6 +3,7 @@ using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using OpenTelemetry;
 using StoryWalker.Infrastructure;
 
@@ -38,7 +39,7 @@ var host = new HostBuilder()
             // connection string, nothing registered. The distro is ASP.NET Core-only, so the
             // worker assembles the same thing by hand: the Functions integration (invocation spans
             // parented on the Service Bus message's trace), the exporter (traces, metrics and
-            // ILogger), and the two sources the distro would have added itself.
+            // ILogger), the two sources the distro would have added itself, and Npgsql.
             var appInsights = config["APPLICATIONINSIGHTS_CONNECTION_STRING"];
             if (!string.IsNullOrWhiteSpace(appInsights))
             {
@@ -55,6 +56,9 @@ var host = new HostBuilder()
                             // Foundry image calls go through a plain HttpClient.
                             .AddSource("System.Net.Http")
                             .AddSource("Azure.*")
+                            // Persisting pages and settling the status (StoryPersister,
+                            // PageImageRenderer); parameterised SQL, no parameter values.
+                            .AddNpgsql()
                     );
             }
         }
