@@ -40,10 +40,11 @@ public sealed class GenerateStory(
         var storyId = Guid.Parse(message.MessageId);
         var brief = BriefSerialization.Deserialize(message.Body.ToString());
 
+        // Ids and counts only: logs are shipped to Application Insights, and the brief's text is
+        // about someone's children (ADR-0023).
         logger.LogInformation(
-            "Generating story {StoryId} ('{Title}'), {PageCount} pages.",
+            "Generating story {StoryId}, {PageCount} pages.",
             storyId,
-            brief.Title,
             brief.Pages.Count
         );
 
