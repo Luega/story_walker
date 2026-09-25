@@ -129,6 +129,30 @@ public static class ConversationEndpoints
             )
             .WithName("UpdateConversationTitle");
 
+        conversations
+            .MapDelete(
+                "/{id:guid}",
+                async (
+                    Guid id,
+                    StoryWalkerDbContext db,
+                    CurrentUser currentUser,
+                    CancellationToken ct
+                ) =>
+                {
+                    var me = await currentUser.GetIdAsync(ct);
+
+                    // One statement in the database, which does the rest through the foreign
+                    // keys: the messages cascade, and the stories stay with their link set to null
+                    // (ADR-0028). Deleting nothing means it was unknown, or not the caller's.
+                    var deleted = await db
+                        .Conversations.Where(c => c.Id == id && c.UserId == me)
+                        .ExecuteDeleteAsync(ct);
+
+                    return deleted == 0 ? Results.NotFound() : Results.NoContent();
+                }
+            )
+            .WithName("DeleteConversation");
+
         return app;
     }
 

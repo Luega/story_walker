@@ -235,6 +235,44 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
         );
     }
 
+    // Stories and conversations are deleted independently (ADR-0028): the story stays, and only
+    // loses its link to the conversation.
+    [Fact]
+    public async Task Delete_removes_the_conversation_and_its_messages_but_keeps_its_stories()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(
+            me,
+            ConversationStatus.Completed,
+            messages: [(MessageRole.User, "hi"), (MessageRole.Assistant, "hello")]
+        );
+        var storyId = await LinkStoryAsync(id, me, "The Fox and the Moon", StoryStatus.Complete);
+
+        var response = await _client.DeleteAsync($"/stories/conversations/{id}", Ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            Assert.False(await db.Conversations.AnyAsync(c => c.Id == id, Ct));
+            Assert.False(await db.ConversationMessages.AnyAsync(m => m.ConversationId == id, Ct));
+            var story = await db.Stories.SingleAsync(s => s.Id == storyId, Ct);
+            Assert.Null(story.ConversationId);
+        });
+    }
+
+    [Fact]
+    public async Task Delete_of_another_users_conversation_is_404_and_keeps_it()
+    {
+        await ResetAndSeedMeAsync();
+        var stranger = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_conversation_stranger"));
+        var theirs = await SeedConversationAsync(stranger, ConversationStatus.Active, messages: [(MessageRole.User, "not yours")]);
+
+        var response = await _client.DeleteAsync($"/stories/conversations/{theirs}", Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(await _factory.ExecuteDbAsync(db => db.Conversations.AnyAsync(c => c.Id == theirs, Ct)));
+    }
+
     private async Task<List<ConversationSummaryDto>> ListAsync()
     {
         var response = await _client.GetAsync("/stories/conversations", Ct);
