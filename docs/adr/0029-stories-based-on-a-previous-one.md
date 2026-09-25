@@ -39,7 +39,12 @@ the illustration prompts, which carry each character's full description, live on
    - `Story.BasedOnStoryId` receives it when the story is queued.
    - Deleting the original leaves its sequels in place, only unlinked. Deletes stay independent,
      as ADR-0028 decided; the old `Restrict` of ADR-0017 is not brought back.
-5. **Only a `Complete` story of the caller's can be a starting point.** Anything else is a `404`.
+5. **A related conversation is titled after what it builds on until its own story exists.**
+   The chat's heading reads "New story based on “…”", and the history's computed title
+   ([ADR-0028](0028-conversation-history.md)) uses the same wording in place of the first-message
+   preview. So the title does not change when the chat is closed and reopened. A title the user
+   chose, or the new story's own title once it exists, still wins.
+6. **Only a `Complete` story of the caller's can be a starting point.** Anything else is a `404`.
    A conversation offers the one story it produced most recently that is `Complete`.
 
 ## Consequences
