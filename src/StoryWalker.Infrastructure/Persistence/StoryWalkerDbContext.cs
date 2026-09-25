@@ -19,6 +19,9 @@ public class StoryWalkerDbContext(DbContextOptions<StoryWalkerDbContext> options
 
     public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
 
+    /// <summary>The ledger the weekly story limit counts (ADR-0030).</summary>
+    public DbSet<CompletedGeneration> CompletedGenerations => Set<CompletedGeneration>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StoryWalkerDbContext).Assembly);

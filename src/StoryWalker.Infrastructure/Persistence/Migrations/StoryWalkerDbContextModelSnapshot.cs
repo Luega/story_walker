@@ -22,6 +22,31 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("StoryWalker.Domain.Entities.CompletedGeneration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("StoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoryId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CompletedAt");
+
+                    b.ToTable("CompletedGenerations");
+                });
+
             modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -224,6 +249,20 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("StoryWalker.Domain.Entities.CompletedGeneration", b =>
+                {
+                    b.HasOne("StoryWalker.Domain.Entities.Story", null)
+                        .WithMany()
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StoryWalker.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
