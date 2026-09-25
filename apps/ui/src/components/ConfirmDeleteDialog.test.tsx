@@ -41,6 +41,24 @@ describe("presentation", () => {
     expect(screen.getByText(/cannot be undone/)).toBeInTheDocument();
   });
 
+  // The conversation history reuses the dialog, with its own wording (ADR-0028).
+  it("uses the heading and description it is given", () => {
+    render(
+      <ConfirmDeleteDialog
+        title="Bedtime ideas"
+        heading="Delete this conversation?"
+        description="The conversation will be deleted. Stories created from it are kept."
+        busy={false}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Delete this conversation?" })).toBeInTheDocument();
+    expect(screen.getByText(/Stories created from it are kept/)).toBeInTheDocument();
+    expect(screen.queryByText(/along with all its pages/)).not.toBeInTheDocument();
+  });
+
   it("puts the initial focus on Cancel, so a stray Enter does not delete", () => {
     renderDialog();
 
