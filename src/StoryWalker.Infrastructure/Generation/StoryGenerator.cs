@@ -23,7 +23,7 @@ public sealed class StoryGenerator(
         // already promised the user (ADR-0019).
         foreach (var page in brief.Pages.OrderBy(p => p.PageNo))
         {
-            var rendered = await renderer.RenderAsync(storyId, page.PageNo, ct);
+            var rendered = await renderer.RenderAsync(storyId, page.PageNo, ct) == PageRenderOutcome.Rendered;
             logger.LogInformation(
                 "Story {StoryId} page {PageNo}: {Outcome}.",
                 storyId,

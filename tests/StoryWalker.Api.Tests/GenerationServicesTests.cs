@@ -108,7 +108,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.True(await NewRenderer(db, generator, store).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Rendered, await NewRenderer(db, generator, store).RenderAsync(storyId, 1, Ct));
         });
 
         await _factory.ExecuteDbAsync(async db =>
@@ -162,7 +162,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.False(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Refused, await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
         });
 
         await _factory.ExecuteDbAsync(async db =>
@@ -210,7 +210,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.True(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Rendered, await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
         });
 
         Assert.Equal(3, generator.CallCount);
@@ -236,7 +236,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
             // No throw: throwing would abandon the message and Service Bus would redeliver it ten
             // times for an error that cannot change — the exact loop that dead-lettered a real
             // story when the image route returned 404 (2026-09-15).
-            Assert.False(await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Failed, await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct));
         });
 
         Assert.Equal(1, generator.CallCount);
@@ -265,7 +265,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.True(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Rendered, await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
         });
 
         Assert.Equal(2, generator.CallCount);
@@ -286,7 +286,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.True(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Rendered, await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
         });
 
         Assert.Equal(2, generator.CallCount);
@@ -311,7 +311,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.True(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Rendered, await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
         });
 
         Assert.Equal(2, generator.CallCount);
@@ -363,7 +363,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.False(await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct));
+            Assert.Equal(PageRenderOutcome.Refused, await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct));
         });
 
         // One rewrite, never a chain of them drifting further from the story.
@@ -385,7 +385,8 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            Assert.False(
+            Assert.Equal(
+                PageRenderOutcome.Refused,
                 await NewRenderer(db, generator, new InMemoryImageStore(), new RecordingChatClient { Reply = "" })
                     .RenderAsync(storyId, 1, Ct)
             );

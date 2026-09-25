@@ -42,8 +42,8 @@ public sealed class PageImageRenderer(
     /// a page that already has an image is skipped without calling the model, so a replayed
     /// activity costs nothing.
     /// </summary>
-    /// <returns>True when the page ends up with an image.</returns>
-    public async Task<bool> RenderAsync(Guid storyId, int pageNo, CancellationToken ct = default)
+    /// <returns>How the page ended; only <see cref="PageRenderOutcome.Rendered"/> has an image.</returns>
+    public async Task<PageRenderOutcome> RenderAsync(Guid storyId, int pageNo, CancellationToken ct = default)
     {
         var page = await db
             .Pages.Include(p => p.Story)
@@ -51,12 +51,12 @@ public sealed class PageImageRenderer(
 
         if (page is null)
         {
-            return false;
+            return PageRenderOutcome.Failed;
         }
 
         if (!string.IsNullOrWhiteSpace(page.ImageUrl))
         {
-            return true;
+            return PageRenderOutcome.Rendered;
         }
 
         var prompt = BuildPrompt(page.IllustrationPrompt, page.Story.ArtStyle, page.Story.TargetAge);
@@ -91,7 +91,7 @@ public sealed class PageImageRenderer(
                     storyId,
                     pageNo
                 );
-                return await MarkFailedAsync(page.Id, ct);
+                return await MarkFailedAsync(page.Id, PageRenderOutcome.Refused, ct);
             }
 
             // Saved with the page whichever way the second attempt goes, so the database records
@@ -113,7 +113,11 @@ public sealed class PageImageRenderer(
                     storyId,
                     pageNo
                 );
-                return await MarkFailedAsync(page.Id, ct);
+                return await MarkFailedAsync(
+                    page.Id,
+                    IsModerationRefusal(retryEx) ? PageRenderOutcome.Refused : PageRenderOutcome.Failed,
+                    ct
+                );
             }
         }
         catch (Exception ex) when (!IsTransient(ex))
@@ -129,7 +133,7 @@ public sealed class PageImageRenderer(
                 storyId,
                 pageNo
             );
-            return await MarkFailedAsync(page.Id, ct);
+            return await MarkFailedAsync(page.Id, PageRenderOutcome.Failed, ct);
         }
 
         // Storage and database failures below are deliberately NOT caught: they are infrastructure
@@ -143,13 +147,13 @@ public sealed class PageImageRenderer(
                 storyId,
                 pageNo
             );
-            return await MarkFailedAsync(page.Id, ct);
+            return await MarkFailedAsync(page.Id, PageRenderOutcome.Failed, ct);
         }
 
         page.ImageUrl = await store.SaveAsync(storyId, pageNo, bytes.Value, mediaType, ct);
         page.Status = PageStatus.Complete;
         await db.SaveChangesAsync(ct);
-        return true;
+        return PageRenderOutcome.Rendered;
     }
 
     /// <summary>
@@ -226,12 +230,16 @@ public sealed class PageImageRenderer(
         return (null, "image/png");
     }
 
-    private async Task<bool> MarkFailedAsync(Guid pageId, CancellationToken ct)
+    private async Task<PageRenderOutcome> MarkFailedAsync(
+        Guid pageId,
+        PageRenderOutcome outcome,
+        CancellationToken ct
+    )
     {
         var page = await db.Pages.FirstAsync(p => p.Id == pageId, ct);
         page.Status = PageStatus.Failed;
         await db.SaveChangesAsync(ct);
-        return false;
+        return outcome;
     }
 
     /// <summary>
