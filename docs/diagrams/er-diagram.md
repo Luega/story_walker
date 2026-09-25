@@ -13,6 +13,8 @@ across stories. `pgvector` embeddings power semantic discovery of reusable stori
 erDiagram
     USER      ||--o{ STORY : owns
     USER      ||--o{ CHARACTER : owns
+    USER      ||--o{ CONVERSATION : "plans with the agent"
+    CONVERSATION |o--o{ STORY : "queued (conversation_id)"
     STORY     ||--o{ STORY : "reuses (based_on_story_id)"
     STORY     ||--o{ PAGE : contains
     PAGE      ||--o{ CHARACTER_PAGE : features
@@ -33,6 +35,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         uuid based_on_story_id FK "nullable; story whose characters + art style this one reuses"
+        uuid conversation_id FK "nullable; the conversation that queued it, where a failure is reported (ADR-0027)"
         string title
         text summary "from the brief"
         string status "Draft | Generating | Complete | Failed"
@@ -40,6 +43,12 @@ erDiagram
         string palette "from the brief"
         vector embedding "pgvector; story summary — for discovery (ADR-0009)"
         timestamp created_at
+    }
+
+    CONVERSATION {
+        uuid id PK
+        uuid user_id FK
+        string status "Active | Completed; back to Active when its story fails (ADR-0027)"
     }
 
     CHARACTER {

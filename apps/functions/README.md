@@ -17,7 +17,12 @@ model. On each message it:
    below). The first `Failed` page **stops the run**: the pages after it stay `Pending` and are
    never paid for ([ADR-0026](../../docs/adr/0026-one-failed-page-fails-the-story.md));
 3. settles the story: `Complete` only if **every** page rendered, otherwise `Failed`. A picture
-   book with a missing picture is not delivered, and a failed story can only be deleted.
+   book with a missing picture is not delivered, and a failed story can only be deleted;
+4. if the story failed, reports it back to the conversation that queued it
+   ([ADR-0027](../../docs/adr/0027-failed-story-returns-to-its-conversation.md)). It appends a
+   hidden system note with the page and the failure's category, then the agent's advice in the
+   parent's language, and reopens the conversation, so it can be carried on from the confirmation.
+   The parent never sees the provider's error.
 
 Rendering is **serial, not parallel**. Six concurrent calls against an image deployment on default
 quota produce a 429 storm, and six sequential renders take about the "few minutes" the agent already
@@ -48,8 +53,8 @@ quota.
 
 The function is a thin shell over services in
 [`StoryWalker.Infrastructure/Generation`](../../src/StoryWalker.Infrastructure/Generation) —
-`StoryGenerator`, which runs the loop above, `StoryPersister`, `PageImageRenderer` and
-`IllustrationPromptRewriter` — so the logic is tested against a real database in
+`StoryGenerator`, which runs the loop above, `StoryPersister`, `PageImageRenderer`,
+`IllustrationPromptRewriter` and `GenerationFailureRecorder` — so the logic is tested against a real database in
 `tests/StoryWalker.Api.Tests` (ADR-0017).
 
 ## Configuration
@@ -79,7 +84,7 @@ as `docker-compose.yml` already does.
 | `ServiceBusConnection` | host | emulator string, as in the template | The `Connection` name on `[ServiceBusTrigger]` in `GenerateStory.cs`. The emulator key is a public placeholder, not a secret. |
 | `ConnectionStrings:Postgres` | `Program.cs` | compose's postgres | Under `Values`, **not** the top-level `ConnectionStrings` block: that block is SqlClient-specific and is not published to Azure. |
 | `Foundry:Endpoint` | `Program.cs` | **you fill in** | Your Foundry resource, e.g. `https://<name>.services.ai.azure.com`. Same endpoint as the API. |
-| `Foundry:Deployment` | `Program.cs` | **you fill in** | The **chat** deployment, the same one the API uses. The worker calls it only when the image model refuses a page's prompt on moderation grounds, to rewrite that prompt once ([ADR-0025](../../docs/adr/0025-rewrite-illustration-prompt-after-moderation.md)). |
+| `Foundry:Deployment` | `Program.cs` | **you fill in** | The **chat** deployment, the same one the API uses. The worker calls it to rewrite a page's prompt the image model refused ([ADR-0025](../../docs/adr/0025-rewrite-illustration-prompt-after-moderation.md)), and to write the agent's advice when a story fails ([ADR-0027](../../docs/adr/0027-failed-story-returns-to-its-conversation.md)). |
 | `Foundry:ImageDeployment` | `Program.cs` | **you fill in** | A **second** deployment on that resource. The name alone picks the route: the four Black Forest Labs names (`FLUX.2-pro`, `FLUX.2-flex`, `FLUX.1-Kontext-pro`, `FLUX-1.1-pro`) go to the BFL provider route (`/providers/blackforestlabs/v1/…`), which is the only one Foundry serves for FLUX.2; **anything else** — `gpt-image-1`, `gpt-image-1-mini`, `dall-e-3` — goes to the Azure OpenAI images route (`/openai/deployments/{name}/images/generations`). A name that is neither, such as a typo, takes the OpenAI route and answers 404 on the first page. |
 | `Foundry:ApiKey` | `Program.cs` | optional | Leave empty to authenticate with your own `az login` (`DefaultAzureCredential`). In Azure, leave it empty and use a managed identity. **Secret** — never commit a real value. |
 | `Storage:ConnectionString` | `Program.cs` | `UseDevelopmentStorage=true` | Where page images go (ADR-0010). Same azurite account as `AzureWebJobsStorage`, different container. |
