@@ -92,6 +92,43 @@ public static class ConversationEndpoints
             )
             .WithName("GetConversation");
 
+        conversations
+            .MapPatch(
+                "/{id:guid}",
+                async (
+                    Guid id,
+                    UpdateConversationTitleRequest request,
+                    StoryWalkerDbContext db,
+                    CurrentUser currentUser,
+                    CancellationToken ct
+                ) =>
+                {
+                    if (string.IsNullOrWhiteSpace(request.Title))
+                    {
+                        return Results.ValidationProblem(
+                            new Dictionary<string, string[]> { ["title"] = ["Title is required."] }
+                        );
+                    }
+
+                    var me = await currentUser.GetIdAsync(ct);
+                    var conversation = await db.Conversations.FirstOrDefaultAsync(
+                        c => c.Id == id && c.UserId == me,
+                        ct
+                    );
+                    if (conversation is null)
+                    {
+                        return Results.NotFound();
+                    }
+
+                    conversation.Title = request.Title.Trim();
+                    await db.SaveChangesAsync(ct);
+
+                    var summary = await Summaries(db, me).FirstAsync(c => c.Id == id, ct);
+                    return Results.Ok(ToSummaryDto(summary));
+                }
+            )
+            .WithName("UpdateConversationTitle");
+
         return app;
     }
 

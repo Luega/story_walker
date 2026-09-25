@@ -35,3 +35,6 @@ public record ConversationDto(
 
 /// <param name="Role"><c>user</c> or <c>assistant</c>.</param>
 public record ConversationMessageDto(string Role, string Text);
+
+/// <summary>Body of <c>PATCH /stories/conversations/{id}</c>: sets the user's own title.</summary>
+public record UpdateConversationTitleRequest(string Title);

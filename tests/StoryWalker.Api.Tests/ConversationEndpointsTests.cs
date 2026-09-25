@@ -179,6 +179,62 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Patch_sets_the_users_own_title_trimmed()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(me, ConversationStatus.Completed, messages: [(MessageRole.User, "hi")]);
+        await LinkStoryAsync(id, me, "The Fox and the Moon", StoryStatus.Complete);
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/stories/conversations/{id}",
+            new UpdateConversationTitleRequest("  Bedtime ideas  "),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var summary = await response.Content.ReadFromJsonAsync<ConversationSummaryDto>(Ct);
+        Assert.Equal("Bedtime ideas", summary!.Title);
+        // It now beats the story's title in the list too.
+        Assert.Equal("Bedtime ideas", Assert.Single(await ListAsync()).Title);
+    }
+
+    [Fact]
+    public async Task Patch_with_an_empty_title_is_400()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(me, ConversationStatus.Active, messages: [(MessageRole.User, "hi")]);
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/stories/conversations/{id}",
+            new UpdateConversationTitleRequest("   "),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Patch_of_another_users_conversation_is_404_and_changes_nothing()
+    {
+        await ResetAndSeedMeAsync();
+        var stranger = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_conversation_stranger"));
+        var theirs = await SeedConversationAsync(stranger, ConversationStatus.Active, messages: [(MessageRole.User, "not yours")]);
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/stories/conversations/{theirs}",
+            new UpdateConversationTitleRequest("Mine now"),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Null(
+            await _factory.ExecuteDbAsync(db =>
+                db.Conversations.Where(c => c.Id == theirs).Select(c => c.Title).SingleAsync(Ct)
+            )
+        );
+    }
+
     private async Task<List<ConversationSummaryDto>> ListAsync()
     {
         var response = await _client.GetAsync("/stories/conversations", Ct);
