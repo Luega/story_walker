@@ -1,5 +1,6 @@
 // Client for the StoryWalker API. Types mirror the wire DTOs in
-// src/StoryWalker.Application/Api (StoryDtos.cs, AgentDtos.cs); JSON is camelCase.
+// src/StoryWalker.Application/Api (StoryDtos.cs, AgentDtos.cs, ConversationDtos.cs); JSON is
+// camelCase.
 // Requests go through the /api rewrite in next.config.ts.
 
 export type StoryStatus = "Draft" | "Generating" | "Complete" | "Failed";
@@ -37,6 +38,34 @@ export interface UserSettings {
   story: string | null;
   characters: string | null;
   artStyle: string | null;
+}
+
+export type ConversationStatus = "Active" | "Completed";
+
+/** One row of the conversation history (ADR-0028); the title is computed by the API. */
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  status: ConversationStatus;
+  /** True while the conversation can still be continued. */
+  resumable: boolean;
+  /** True when the latest story made from it failed (ADR-0027). */
+  storyFailed: boolean;
+  lastActivityAt: string;
+}
+
+/** Only what the parent and the agent said: the API leaves out system messages and the sentinel. */
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  status: ConversationStatus;
+  resumable: boolean;
+  messages: ConversationMessage[];
 }
 
 export type AgentTurn =
@@ -161,4 +190,48 @@ export async function saveUserSettings(settings: UserSettings): Promise<UserSett
 function firstValidationError(problem: unknown): string | undefined {
   const errors = (problem as { errors?: Record<string, string[]> } | null)?.errors;
   return errors ? Object.values(errors).flat()[0] : undefined;
+}
+
+/** The signed-in user's conversations, most recent activity first (ADR-0028). */
+export async function listConversations(): Promise<ConversationSummary[]> {
+  // Fresh every time: the sidebar reopens after a chat that may have changed the list.
+  const res = await fetch(`${BASE}/stories/conversations`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load your conversations (${res.status})`);
+  return res.json();
+}
+
+/** One conversation as the chat shows it, or null when it is unknown (or not the user's). */
+export async function getConversation(id: string): Promise<Conversation | null> {
+  const res = await fetch(`${BASE}/stories/conversations/${encodeURIComponent(id)}`, {
+    cache: "no-store",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load the conversation (${res.status})`);
+  return res.json();
+}
+
+/** Sets the user's own title. Returns the title as the server stored it (it trims). */
+export async function renameConversation(id: string, title: string): Promise<string> {
+  const res = await fetch(`${BASE}/stories/conversations/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (res.status === 404) throw new Error("Conversation not found.");
+  if (!res.ok) throw new Error(`Failed to rename the conversation (${res.status})`);
+  const summary: ConversationSummary = await res.json();
+  return summary.title;
+}
+
+/**
+ * Deletes a conversation and its messages; the stories made from it are kept (ADR-0028). A 404
+ * counts as success: the conversation is already gone.
+ */
+export async function deleteConversation(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/stories/conversations/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Failed to delete the conversation (${res.status})`);
+  }
 }

@@ -1,4 +1,11 @@
-import type { Page, Story, StorySummary, UserSettings } from "@/lib/api";
+import type {
+  Conversation,
+  ConversationSummary,
+  Page,
+  Story,
+  StorySummary,
+  UserSettings,
+} from "@/lib/api";
 
 // Builders so each test states only the fields it actually cares about; everything else gets a
 // plausible default and stays out of the way.
@@ -44,6 +51,34 @@ export function aUserSettings(overrides: Partial<UserSettings> = {}): UserSettin
     story: "Short and gentle, always a kind ending",
     characters: "Pip, a small grey kitten",
     artStyle: "soft watercolour",
+    ...overrides,
+  };
+}
+
+export function aConversationSummary(
+  overrides: Partial<ConversationSummary> = {},
+): ConversationSummary {
+  return {
+    id: nextId(),
+    title: "The Kind Dragon",
+    status: "Active",
+    resumable: true,
+    storyFailed: false,
+    lastActivityAt: "2026-09-01T10:00:00Z",
+    ...overrides,
+  };
+}
+
+export function aConversation(overrides: Partial<Conversation> = {}): Conversation {
+  return {
+    id: nextId(),
+    title: "The Kind Dragon",
+    status: "Active",
+    resumable: true,
+    messages: [
+      { role: "user", text: "A story about a dragon who is afraid of the dark" },
+      { role: "assistant", text: "Lovely! How old is the child?" },
+    ],
     ...overrides,
   };
 }

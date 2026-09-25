@@ -1,10 +1,20 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { worker } from "@/test/handlers";
-import { aStory, aStorySummary, aUserSettings } from "@/test/factories";
+import {
+  aConversation,
+  aConversationSummary,
+  aStory,
+  aStorySummary,
+  aUserSettings,
+} from "@/test/factories";
 import type { UserSettings } from "./api";
 import {
+  deleteConversation,
   deleteStory,
+  getConversation,
+  listConversations,
+  renameConversation,
   getStory,
   getUserSettings,
   listStories,
@@ -289,5 +299,118 @@ describe("saveUserSettings", () => {
     worker.use(http.patch("/api/me/settings", () => new HttpResponse(null, { status: 500 })));
 
     await expect(saveUserSettings(aUserSettings())).rejects.toThrow(/500/);
+  });
+});
+
+describe("listConversations", () => {
+  it("returns the history the API sends", async () => {
+    const summary = aConversationSummary({ title: "Bedtime ideas" });
+    worker.use(http.get("/api/stories/conversations", () => HttpResponse.json([summary])));
+
+    await expect(listConversations()).resolves.toEqual([summary]);
+  });
+
+  it("asks for a fresh list rather than a cached one", async () => {
+    let cache: RequestCache | undefined;
+    worker.use(
+      http.get("/api/stories/conversations", ({ request }) => {
+        cache = request.cache;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    await listConversations();
+
+    expect(cache).toBe("no-store");
+  });
+
+  it("throws when the API fails", async () => {
+    worker.use(http.get("/api/stories/conversations", () => new HttpResponse(null, { status: 500 })));
+
+    await expect(listConversations()).rejects.toThrow(/500/);
+  });
+});
+
+describe("getConversation", () => {
+  it("returns the conversation", async () => {
+    const conversation = aConversation();
+    worker.use(
+      http.get(`/api/stories/conversations/${conversation.id}`, () =>
+        HttpResponse.json(conversation),
+      ),
+    );
+
+    await expect(getConversation(conversation.id)).resolves.toEqual(conversation);
+  });
+
+  it("returns null for an unknown conversation instead of throwing", async () => {
+    worker.use(
+      http.get("/api/stories/conversations/:id", () => new HttpResponse(null, { status: 404 })),
+    );
+
+    await expect(getConversation("missing")).resolves.toBeNull();
+  });
+
+  it("throws on a server error", async () => {
+    worker.use(
+      http.get("/api/stories/conversations/:id", () => new HttpResponse(null, { status: 500 })),
+    );
+
+    await expect(getConversation("boom")).rejects.toThrow(/500/);
+  });
+});
+
+describe("renameConversation", () => {
+  it("PATCHes the new title and returns the title the server stored", async () => {
+    let body: unknown;
+    worker.use(
+      http.patch("/api/stories/conversations/:id", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(aConversationSummary({ title: "Clean title" }));
+      }),
+    );
+
+    await expect(renameConversation("id", "  Clean title  ")).resolves.toBe("Clean title");
+    expect(body).toEqual({ title: "  Clean title  " });
+  });
+
+  it("reports a missing conversation", async () => {
+    worker.use(
+      http.patch("/api/stories/conversations/:id", () => new HttpResponse(null, { status: 404 })),
+    );
+
+    await expect(renameConversation("missing", "x")).rejects.toThrow("Conversation not found.");
+  });
+});
+
+describe("deleteConversation", () => {
+  it("DELETEs the conversation", async () => {
+    let method: string | undefined;
+    worker.use(
+      http.delete("/api/stories/conversations/:id", ({ request }) => {
+        method = request.method;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await deleteConversation("some-id");
+
+    expect(method).toBe("DELETE");
+  });
+
+  it("treats 404 as success: the conversation is already gone", async () => {
+    worker.use(
+      http.delete("/api/stories/conversations/:id", () => new HttpResponse(null, { status: 404 })),
+    );
+
+    await expect(deleteConversation("missing")).resolves.toBeUndefined();
+  });
+
+  it("throws on a server error", async () => {
+    worker.use(
+      http.delete("/api/stories/conversations/:id", () => new HttpResponse(null, { status: 500 })),
+    );
+
+    await expect(deleteConversation("boom")).rejects.toThrow(/500/);
   });
 });
