@@ -14,10 +14,10 @@ model. On each message it:
 2. renders one image per page **in order**, uploading each to Blob Storage
    ([ADR-0010](../../docs/adr/0010-azure-blob-storage-for-images.md)); the page gets its `ImageUrl`
    and goes `Complete`, or `Failed` if the model refuses the prompt even after one rewrite (see
-   below);
-3. settles the story: `Complete` if at least one page rendered, otherwise `Failed`. A story with
-   five of six pictures is still readable, so the per-page `Status` is what tells a client which
-   illustration is missing.
+   below). The first `Failed` page **stops the run**: the pages after it stay `Pending` and are
+   never paid for ([ADR-0026](../../docs/adr/0026-one-failed-page-fails-the-story.md));
+3. settles the story: `Complete` only if **every** page rendered, otherwise `Failed`. A picture
+   book with a missing picture is not delivered, and a failed story can only be deleted.
 
 Rendering is **serial, not parallel**. Six concurrent calls against an image deployment on default
 quota produce a 429 storm, and six sequential renders take about the "few minutes" the agent already
@@ -46,9 +46,10 @@ original on the `Page` row.
 `maxConcurrentCalls` is pinned to 1 in `host.json` so two stories cannot compete for the same image
 quota.
 
-The function is a thin shell over two services in
+The function is a thin shell over services in
 [`StoryWalker.Infrastructure/Generation`](../../src/StoryWalker.Infrastructure/Generation) —
-`StoryPersister` and `PageImageRenderer` — so the logic is tested against a real database in
+`StoryGenerator`, which runs the loop above, `StoryPersister`, `PageImageRenderer` and
+`IllustrationPromptRewriter` — so the logic is tested against a real database in
 `tests/StoryWalker.Api.Tests` (ADR-0017).
 
 ## Configuration
