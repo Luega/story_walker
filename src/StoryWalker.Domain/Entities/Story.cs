@@ -31,6 +31,13 @@ public class Story : EntityBase
     /// </summary>
     public Guid? ConversationId { get; set; }
 
+    /// <summary>
+    /// The story this one was started from (a sequel, a prequel), copied from its conversation when
+    /// the story is queued (ADR-0029). Null for a story made from scratch, and when the original is
+    /// deleted: deletes stay independent (ADR-0028).
+    /// </summary>
+    public Guid? BasedOnStoryId { get; set; }
+
     public User User { get; set; } = null!;
 
     public Conversation? Conversation { get; set; }

@@ -28,6 +28,9 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BasedOnStoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -45,6 +48,8 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BasedOnStoryId");
 
                     b.HasIndex("UserId");
 
@@ -136,6 +141,9 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("BasedOnStoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ConversationId")
                         .HasColumnType("uuid");
 
@@ -160,6 +168,8 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BasedOnStoryId");
 
                     b.HasIndex("ConversationId");
 
@@ -218,6 +228,11 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Conversation", b =>
                 {
+                    b.HasOne("StoryWalker.Domain.Entities.Story", null)
+                        .WithMany()
+                        .HasForeignKey("BasedOnStoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("StoryWalker.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -249,6 +264,11 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Story", b =>
                 {
+                    b.HasOne("StoryWalker.Domain.Entities.Story", null)
+                        .WithMany()
+                        .HasForeignKey("BasedOnStoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("StoryWalker.Domain.Entities.Conversation", "Conversation")
                         .WithMany()
                         .HasForeignKey("ConversationId")

@@ -21,6 +21,14 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
 
         builder.HasIndex(c => c.UserId);
 
+        // The story a conversation was started from (ADR-0029). Deleting it leaves the
+        // conversation, only unlinked.
+        builder
+            .HasOne<Story>()
+            .WithMany()
+            .HasForeignKey(c => c.BasedOnStoryId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Messages are owned by the conversation and cascade with it.
         builder
             .HasMany(c => c.Messages)

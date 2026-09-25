@@ -20,6 +20,13 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
             .HasForeignKey(s => s.ConversationId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Deleting the original leaves its sequels in place, only unlinked (ADR-0029): deletes
+        // stay independent (ADR-0028), unlike the Restrict this link had before ADR-0019.
+        builder.HasOne<Story>()
+            .WithMany()
+            .HasForeignKey(s => s.BasedOnStoryId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasMany(s => s.Pages)
             .WithOne(p => p.Story)
             .HasForeignKey(p => p.StoryId)

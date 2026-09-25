@@ -21,6 +21,12 @@ public class Conversation : EntityBase
     /// </summary>
     public string? Title { get; set; }
 
+    /// <summary>
+    /// The story this conversation was started from, to write a related one (ADR-0029). Carried
+    /// onto the story it queues. Null when started from scratch, or once the original is deleted.
+    /// </summary>
+    public Guid? BasedOnStoryId { get; set; }
+
     /// <summary>The full message history, in <see cref="ConversationMessage.Seq"/> order.</summary>
     public ICollection<ConversationMessage> Messages { get; set; } = [];
 }
