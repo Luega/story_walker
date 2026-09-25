@@ -64,7 +64,7 @@ an empty dashboard.
 | `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `422` refused by the content filter (ADR-0024), `502` unusable brief |
 | `GET /stories` | The caller's story summaries | `200` |
 | `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` unknown or not yours |
-| `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` unknown or not yours |
+| `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` unknown or not yours, `409` the story failed and can only be deleted (ADR-0026) |
 | `DELETE /stories/{id}` | Delete a story (pages cascade) | `204`, `404` unknown or not yours |
 | `GET /me/settings` | The caller's standing story context (four free-text answers) | `200`; four nulls before anything is saved |
 | `PATCH /me/settings` | Replace all four answers; blank clears one | `200` stored values, `400` an answer over 600 characters |

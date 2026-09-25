@@ -194,6 +194,16 @@ public static class StoryEndpoints
                         return Results.NotFound();
                     }
 
+                    // A failed story can only be deleted (ADR-0026); the dashboard hides the
+                    // rename action, and this keeps any other client to the same rule.
+                    if (story.Status == StoryStatus.Failed)
+                    {
+                        return Results.Problem(
+                            detail: "A story that failed can only be deleted.",
+                            statusCode: StatusCodes.Status409Conflict
+                        );
+                    }
+
                     story.Title = request.Title.Trim();
                     await db.SaveChangesAsync(ct);
 

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using StoryWalker.Application.Api;
+using StoryWalker.Domain.Enums;
 
 namespace StoryWalker.Api.Tests;
 
@@ -96,6 +97,37 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
             db.Stories.Where(s => s.Id == storyId).Select(s => s.Title).FirstAsync(Ct)
         );
         Assert.Equal("Renamed Story", persistedTitle);
+    }
+
+    // A failed story can only be deleted (ADR-0026). The dashboard hides the rename action; this
+    // is the server holding the same line.
+    [Fact]
+    public async Task PatchStory_of_a_failed_story_returns_409_and_does_not_rename()
+    {
+        await _factory.ResetAsync();
+        var mineId = await _factory.ExecuteDbAsync(db =>
+            SeedData.SeedUserAsync(db, "user_story_tests")
+        );
+        var storyId = await _factory.ExecuteDbAsync(async db =>
+        {
+            var id = await SeedData.SeedDemoStoryAsync(db, mineId);
+            var story = await db.Stories.SingleAsync(s => s.Id == id, Ct);
+            story.Status = StoryStatus.Failed;
+            await db.SaveChangesAsync(Ct);
+            return id;
+        });
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/stories/{storyId}",
+            new UpdateStoryTitleRequest("Renamed Story"),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var persistedTitle = await _factory.ExecuteDbAsync(db =>
+            db.Stories.Where(s => s.Id == storyId).Select(s => s.Title).FirstAsync(Ct)
+        );
+        Assert.Equal("Luna and the Rainy Day Adventure", persistedTitle);
     }
 
     [Fact]
