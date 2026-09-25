@@ -62,6 +62,10 @@ an empty dashboard.
 | --- | --- | --- |
 | `GET /health` | Liveness probe | `200` `"healthy"` |
 | `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `422` refused by the content filter (ADR-0024), `502` unusable brief |
+| `GET /stories/conversations` | The caller's conversation history, most recent activity first, with a computed title, `resumable` and `storyFailed` (ADR-0028) | `200` |
+| `GET /stories/conversations/{id}` | One conversation as the chat shows it: user and assistant messages only, sentinel stripped | `200`, `404` unknown or not yours |
+| `PATCH /stories/conversations/{id}` | Set the conversation's own title | `200` updated summary, `400` empty title, `404` unknown or not yours |
+| `DELETE /stories/conversations/{id}` | Delete a conversation (messages cascade; its stories are kept, unlinked) | `204`, `404` unknown or not yours |
 | `GET /stories` | The caller's story summaries | `200` |
 | `GET /stories/{id}` | Full story: `targetAge`, `artStyle`, six pages with `imageUrl` and per-page `status` | `200`, `404` unknown or not yours |
 | `PATCH /stories/{id}` | Rename a story (title only) | `200` updated story, `400` empty title, `404` unknown or not yours, `409` the story failed and can only be deleted (ADR-0026) |
