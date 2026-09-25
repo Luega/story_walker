@@ -22,8 +22,9 @@ function stateOf(c: ConversationSummary): { text: string; className: string } {
 
 /**
  * The conversation history (ADR-0028): every conversation, most recent activity first, in a panel
- * that slides in from the left. Choosing one hands its id to the dashboard, which opens it in the
- * chat modal. Renaming and deleting happen here.
+ * that slides in from the left. Two tabs split one list (ADR-0029): In progress, for what can still
+ * be continued, a failed story included; Completed, for the rest. Choosing one hands its id to the
+ * dashboard, which opens it in the chat modal. Renaming and deleting happen here.
  *
  * Mounted only while open, so the list is fetched fresh each time: a chat that just closed may have
  * added a conversation or changed where one stands. A <dialog>, like the chat and the delete
@@ -41,6 +42,9 @@ export function ConversationSidebar({
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [tab, setTab] = useState<"inProgress" | "completed">("inProgress");
+
+  const shown = conversations?.filter((c) => c.resumable === (tab === "inProgress")) ?? null;
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -106,7 +110,31 @@ export function ConversationSidebar({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      <div role="tablist" aria-label="Conversations" className="flex gap-1 border-b border-border px-3 pt-2">
+        {(
+          [
+            ["inProgress", "In progress"],
+            ["completed", "Completed"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition ${
+              tab === key
+                ? "border-accent text-foreground"
+                : "border-transparent text-muted hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div role="tabpanel" className="flex-1 overflow-y-auto px-3 py-3">
         {error && (
           <p role="alert" className="mx-2 mb-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800">
             {error}
@@ -119,9 +147,17 @@ export function ConversationSidebar({
           <p className="px-2 text-muted">No conversations yet. They appear here once you chat.</p>
         )}
 
-        {conversations && conversations.length > 0 && (
+        {conversations && conversations.length > 0 && shown?.length === 0 && (
+          <p className="px-2 text-muted">
+            {tab === "inProgress"
+              ? "Nothing in progress. Start a new story from the dashboard."
+              : "No finished stories yet."}
+          </p>
+        )}
+
+        {shown && shown.length > 0 && (
           <ul className="space-y-1">
-            {conversations.map((c) => (
+            {shown.map((c) => (
               <ConversationRow
                 key={c.id}
                 conversation={c}

@@ -49,6 +49,8 @@ describe("listing", () => {
     await screen.findByRole("button", { name: "Going on" });
     expect(rowOf("Going on")).toHaveTextContent("In progress");
     expect(rowOf("Gone wrong")).toHaveTextContent(/Story failed/);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Completed" }));
     expect(rowOf("All done")).toHaveTextContent("Story created");
   });
 
@@ -64,6 +66,49 @@ describe("listing", () => {
     renderSidebar();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/500/);
+  });
+});
+
+// Two tabs over the same list (ADR-0029).
+describe("tabs", () => {
+  function serveBoth() {
+    serveConversations(
+      aConversationSummary({ title: "Going on", resumable: true }),
+      aConversationSummary({ title: "Gone wrong", resumable: true, storyFailed: true }),
+      aConversationSummary({ title: "All done", status: "Completed", resumable: false }),
+    );
+  }
+
+  it("opens on what can still be continued, a failed story included", async () => {
+    serveBoth();
+    renderSidebar();
+
+    await screen.findByRole("button", { name: "Going on" });
+    expect(screen.getByRole("tab", { name: "In progress" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Gone wrong" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "All done" })).not.toBeInTheDocument();
+  });
+
+  it("shows the finished conversations under Completed", async () => {
+    serveBoth();
+    renderSidebar();
+    await screen.findByRole("button", { name: "Going on" });
+
+    await userEvent.click(screen.getByRole("tab", { name: "Completed" }));
+
+    expect(screen.getByRole("tab", { name: "Completed" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "All done" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Going on" })).not.toBeInTheDocument();
+  });
+
+  it("says when a tab has nothing in it", async () => {
+    serveConversations(aConversationSummary({ title: "Going on", resumable: true }));
+    renderSidebar();
+    await screen.findByRole("button", { name: "Going on" });
+
+    await userEvent.click(screen.getByRole("tab", { name: "Completed" }));
+
+    expect(screen.getByText(/No finished stories yet/)).toBeInTheDocument();
   });
 });
 
