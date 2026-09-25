@@ -10,6 +10,7 @@ import {
 } from "@/test/factories";
 import type { UserSettings } from "./api";
 import {
+  getQuota,
   deleteConversation,
   deleteStory,
   getConversation,
@@ -427,5 +428,34 @@ describe("deleteConversation", () => {
     );
 
     await expect(deleteConversation("boom")).rejects.toThrow(/500/);
+  });
+});
+
+describe("getQuota", () => {
+  it("returns where the user stands against the weekly limit", async () => {
+    const quota = { limit: 7, used: 2, remaining: 5, resetsAt: "2026-09-28T00:00:00Z" };
+    worker.use(http.get("/api/me/quota", () => HttpResponse.json(quota)));
+
+    await expect(getQuota()).resolves.toEqual(quota);
+  });
+
+  it("asks for a fresh count rather than a cached one", async () => {
+    let cache: RequestCache | undefined;
+    worker.use(
+      http.get("/api/me/quota", ({ request }) => {
+        cache = request.cache;
+        return HttpResponse.json({ limit: 7, used: 0, remaining: 7, resetsAt: "2026-09-28T00:00:00Z" });
+      }),
+    );
+
+    await getQuota();
+
+    expect(cache).toBe("no-store");
+  });
+
+  it("throws when the API fails", async () => {
+    worker.use(http.get("/api/me/quota", () => new HttpResponse(null, { status: 500 })));
+
+    await expect(getQuota()).rejects.toThrow(/500/);
   });
 });

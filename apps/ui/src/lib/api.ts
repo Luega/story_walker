@@ -71,6 +71,16 @@ export interface Conversation {
   latestCompleteStoryId: string | null;
 }
 
+/** Where the user stands against the weekly story limit (ADR-0030). */
+export interface Quota {
+  limit: number;
+  /** Finished this week, plus the stories still generating, which hold a slot. */
+  used: number;
+  remaining: number;
+  /** The next Monday 00:00 UTC. */
+  resetsAt: string;
+}
+
 export type AgentTurn =
   | { kind: "reply"; conversationId: string; reply: string }
   | { kind: "queued"; storyId: string }
@@ -239,4 +249,12 @@ export async function deleteConversation(id: string): Promise<void> {
   if (!res.ok && res.status !== 404) {
     throw new Error(`Failed to delete the conversation (${res.status})`);
   }
+}
+
+/** Where the user stands against the weekly story limit (ADR-0030). */
+export async function getQuota(): Promise<Quota> {
+  // Fresh every time: it changes as stories finish, and the dashboard asks again when they do.
+  const res = await fetch(`${BASE}/me/quota`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load your weekly limit (${res.status})`);
+  return res.json();
 }
