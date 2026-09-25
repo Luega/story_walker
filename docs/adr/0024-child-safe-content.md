@@ -57,6 +57,9 @@ answer the parent can act on.
 - The Foundry content filter on the chat and image deployments is still configured only in the
   portal. A stricter custom filter (blocking *low* severity) should be created, and recorded in
   `iac/`, so that nobody can loosen it without anyone noticing.
+- An image the filter refuses is no longer simply `Failed`: since
+  [ADR-0025](0025-rewrite-illustration-prompt-after-moderation.md) its illustration prompt is
+  rewritten once first.
 - Switching images to Flux ([ADR-0011](0011-microsoft-foundry-agent-and-generation.md)) swaps
   Azure's image filter for Black Forest Labs' moderation, which behaves differently.
 

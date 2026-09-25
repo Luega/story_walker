@@ -58,7 +58,9 @@ the API uses, and refuses to start without it.
 ### Negative / trade-offs accepted
 - The rewritten picture can show a slightly different beat of the scene than the original prompt
   described. It still matches the page text, which is what the child reads.
-- The original prompt survives only in the log line of the first refusal, not in the database.
+- The original prompt is not kept anywhere. The refusal's log line carries Azure's error body,
+  which does not include the prompt, and prompts are deliberately not logged because they name
+  children ([ADR-0023](0023-opentelemetry-to-application-insights.md)).
 - A refused page takes one more chat call and one more image call (about 30–40 s) before it
   completes. That is still inside `functionTimeout`.
 - The worker gains a required setting and a dependency on the chat deployment.

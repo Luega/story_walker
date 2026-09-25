@@ -13,7 +13,8 @@ model. On each message it:
    `Story` row already exists, created by the API at enqueue time;
 2. renders one image per page **in order**, uploading each to Blob Storage
    ([ADR-0010](../../docs/adr/0010-azure-blob-storage-for-images.md)); the page gets its `ImageUrl`
-   and goes `Complete`, or `Failed` if the model refuses the prompt;
+   and goes `Complete`, or `Failed` if the model refuses the prompt even after one rewrite (see
+   below);
 3. settles the story: `Complete` if at least one page rendered, otherwise `Failed`. A story with
    five of six pictures is still readable, so the per-page `Status` is what tells a client which
    illustration is missing.
@@ -33,8 +34,14 @@ first page without a picture. Duplicate delivery is safe for the same reason.
 Transient failures are retried **inside** `PageImageRenderer` with exponential backoff (3 attempts,
 5 s doubling) rather than by throwing: an exception abandons the message, which Service Bus makes
 available again immediately, so a throttled deployment would burn all ten deliveries in seconds. A
-content-filter refusal is permanent, so it is never retried — that page is marked `Failed` and the
-story carries on.
+moderation refusal (`moderation_blocked`, a content-filter code) is never retried with the same
+prompt, since the classifier would give the same answer. Instead the worker asks the chat deployment
+(`Foundry:Deployment`) to rewrite **that page's illustration prompt only**, and tries once more
+([ADR-0025](../../docs/adr/0025-rewrite-illustration-prompt-after-moderation.md)). The page text is
+never touched, and character descriptions are kept word for word. The rewrite is anchored to the
+page text, so the picture still shows the same moment. If there is no usable rewrite, or it is
+refused too, the page is marked `Failed` and the story carries on. The rewritten prompt replaces the
+original on the `Page` row.
 
 `maxConcurrentCalls` is pinned to 1 in `host.json` so two stories cannot compete for the same image
 quota.
