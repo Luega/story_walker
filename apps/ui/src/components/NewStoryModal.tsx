@@ -14,31 +14,57 @@ const GREETING: Message = {
   text: "Hi! Tell me about the story you'd like: who the main characters are, where it takes place, and what age it's for.",
 };
 
+/** A finished story a new one builds on (ADR-0029). */
+export interface BasedOn {
+  storyId: string;
+  title: string;
+}
+
+function greetingFor(basedOn?: BasedOn): Message {
+  if (!basedOn) return GREETING;
+  return {
+    role: "assistant",
+    text: `Let's write a new story based on “${basedOn.title}”. A sequel, a prequel, or something else? Tell me what should happen.`,
+  };
+}
+
 /**
  * Chat with the story agent. Mounted only while open. Closing it leaves the conversation saved on
  * the server, where the conversation history can reopen it (ADR-0028).
  *
  * With `conversationId` it opens that conversation instead of greeting: it continues it while it
- * is resumable (not generated yet, or its story failed) and only shows it otherwise.
+ * is resumable (not generated yet, or its story failed) and only shows it otherwise. A finished one
+ * offers "New story based on this one", reported through `onStartBasedOn`.
+ *
+ * With `basedOn` it starts a new conversation from that finished story, for a sequel, a prequel or
+ * another related story (ADR-0029); the story is named on the first turn only.
  *
  * It does not navigate: once the agent has the brief it reports the queued story to the dashboard
  * behind it and closes, leaving the user where they started.
  */
 export function NewStoryModal({
   conversationId: existingId,
+  basedOn,
   onClose,
   onQueued,
+  onStartBasedOn,
 }: {
   conversationId?: string;
+  basedOn?: BasedOn;
   onClose: () => void;
   onQueued: (storyId: string) => void;
+  onStartBasedOn?: (basedOn: BasedOn) => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const [conversationId, setConversationId] = useState<string | null>(existingId ?? null);
-  const [messages, setMessages] = useState<Message[]>(existingId ? [] : [GREETING]);
-  const [title, setTitle] = useState("New story");
+  const [messages, setMessages] = useState<Message[]>(existingId ? [] : [greetingFor(basedOn)]);
+  const [title, setTitle] = useState(
+    basedOn ? `New story based on “${basedOn.title}”` : "New story",
+  );
+  // What a finished conversation offers to build on; null when it has no finished story.
+  const [buildOn, setBuildOn] = useState<BasedOn | null>(null);
   // An existing conversation is read-only until it has loaded, and stays so if it cannot go on.
   const [loading, setLoading] = useState(existingId !== undefined);
   const [readOnly, setReadOnly] = useState<"none" | "created" | "missing">("none");
@@ -66,6 +92,9 @@ export function NewStoryModal({
         setTitle(conversation.title);
         setMessages(conversation.messages);
         if (!conversation.resumable) setReadOnly("created");
+        if (conversation.latestCompleteStoryId) {
+          setBuildOn({ storyId: conversation.latestCompleteStoryId, title: conversation.title });
+        }
       } catch (e) {
         if (!cancelled) {
           setReadOnly("missing");
@@ -98,7 +127,13 @@ export function NewStoryModal({
     setError(null);
     setSending(true);
 
-    const turn = await sendAgentMessage(conversationId, text);
+    // Only the turn that starts the conversation says what it builds on; after that, the
+    // conversation remembers it.
+    const turn = await sendAgentMessage(
+      conversationId,
+      text,
+      conversationId === null ? basedOn?.storyId : undefined,
+    );
     setSending(false);
 
     switch (turn.kind) {
@@ -112,7 +147,7 @@ export function NewStoryModal({
         break;
       case "notFound":
         setConversationId(null);
-        setMessages([GREETING]);
+        setMessages([greetingFor(basedOn)]);
         setError("The conversation expired — let's start over.");
         break;
       case "error":
@@ -200,9 +235,20 @@ export function NewStoryModal({
       )}
 
       {readOnly === "created" && (
-        <p className="border-t border-border px-5 py-4 text-sm text-muted">
-          This story has already been created, so the conversation can only be read.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
+          <p className="text-sm text-muted">
+            This story has already been created, so the conversation can only be read.
+          </p>
+          {buildOn && onStartBasedOn && (
+            <button
+              type="button"
+              onClick={() => onStartBasedOn(buildOn)}
+              className="rounded-xl bg-accent px-4 py-2.5 font-semibold text-accent-foreground transition hover:brightness-105"
+            >
+              New story based on this one
+            </button>
+          )}
+        </div>
       )}
 
       {canWrite && (

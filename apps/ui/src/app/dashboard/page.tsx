@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { deleteStory, listStories, renameStory, type StorySummary } from "@/lib/api";
 import { StoryCard } from "@/components/StoryCard";
-import { NewStoryModal } from "@/components/NewStoryModal";
+import { NewStoryModal, type BasedOn } from "@/components/NewStoryModal";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
@@ -16,6 +16,8 @@ export default function DashboardPage() {
   // The conversation the chat opens on; null starts a new one (ADR-0028).
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // The finished story a new one builds on (ADR-0029); null for a story from scratch.
+  const [basedOn, setBasedOn] = useState<BasedOn | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StorySummary | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [queuedId, setQueuedId] = useState<string | null>(null);
@@ -109,6 +111,7 @@ export default function DashboardPage() {
             type="button"
             onClick={() => {
               setOpenConversationId(null);
+              setBasedOn(null);
               setModalOpen(true);
             }}
             className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105"
@@ -165,6 +168,7 @@ export default function DashboardPage() {
           onOpen={(id) => {
             setSidebarOpen(false);
             setOpenConversationId(id);
+            setBasedOn(null);
             setModalOpen(true);
           }}
         />
@@ -172,10 +176,16 @@ export default function DashboardPage() {
 
       {modalOpen && (
         <NewStoryModal
-          key={openConversationId ?? "new"}
+          // Remounted whenever what it opens on changes, so no state leaks between chats.
+          key={openConversationId ?? (basedOn ? `based-on:${basedOn.storyId}` : "new")}
           conversationId={openConversationId ?? undefined}
+          basedOn={basedOn ?? undefined}
           onClose={() => setModalOpen(false)}
           onQueued={handleQueued}
+          onStartBasedOn={(chosen) => {
+            setOpenConversationId(null);
+            setBasedOn(chosen);
+          }}
         />
       )}
 

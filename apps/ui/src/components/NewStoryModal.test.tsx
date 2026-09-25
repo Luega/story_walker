@@ -235,3 +235,97 @@ describe("an existing conversation", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });
+
+// A related story (ADR-0029).
+describe("a new story based on a previous one", () => {
+  it("says what it builds on", () => {
+    render(
+      <NewStoryModal
+        basedOn={{ storyId: "story-7", title: "The Fox and the Moon" }}
+        onClose={vi.fn()}
+        onQueued={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "New story based on “The Fox and the Moon”" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/sequel, a prequel/)).toBeInTheDocument();
+  });
+
+  it("names the story on the first turn only", async () => {
+    const turns: unknown[] = [];
+    worker.use(
+      http.post(CONVERSATIONS, async ({ request }) => {
+        turns.push(await request.json());
+        return HttpResponse.json({ conversationId: "conv-9", reply: "Lovely", briefReady: false });
+      }),
+    );
+    render(
+      <NewStoryModal
+        basedOn={{ storyId: "story-7", title: "The Fox and the Moon" }}
+        onClose={vi.fn()}
+        onQueued={vi.fn()}
+      />,
+    );
+    const input = screen.getByRole("textbox");
+
+    await userEvent.fill(input, "A sequel");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByText("Lovely");
+    await userEvent.fill(input, "In winter");
+    await userEvent.keyboard("{Enter}");
+
+    await expect.poll(() => turns.length).toBe(2);
+    expect(turns).toEqual([
+      { conversationId: null, message: "A sequel", basedOnStoryId: "story-7" },
+      { conversationId: "conv-9", message: "In winter" },
+    ]);
+  });
+
+  it("can be started from a finished conversation", async () => {
+    const conversation = aConversation({
+      title: "The Fox and the Moon",
+      status: "Completed",
+      resumable: false,
+      latestCompleteStoryId: "story-7",
+    });
+    worker.use(
+      http.get(`${CONVERSATIONS}/${conversation.id}`, () => HttpResponse.json(conversation)),
+    );
+    const onStartBasedOn = vi.fn();
+    render(
+      <NewStoryModal
+        conversationId={conversation.id}
+        onClose={vi.fn()}
+        onQueued={vi.fn()}
+        onStartBasedOn={onStartBasedOn}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "New story based on this one" }));
+
+    expect(onStartBasedOn).toHaveBeenCalledExactlyOnceWith({
+      storyId: "story-7",
+      title: "The Fox and the Moon",
+    });
+  });
+
+  it("is not offered when the conversation has no finished story", async () => {
+    const conversation = aConversation({ status: "Completed", resumable: false, latestCompleteStoryId: null });
+    worker.use(
+      http.get(`${CONVERSATIONS}/${conversation.id}`, () => HttpResponse.json(conversation)),
+    );
+    render(
+      <NewStoryModal
+        conversationId={conversation.id}
+        onClose={vi.fn()}
+        onQueued={vi.fn()}
+        onStartBasedOn={vi.fn()}
+      />,
+    );
+
+    await screen.findByText(/already been created/);
+    expect(screen.queryByRole("button", { name: "New story based on this one" })).not.toBeInTheDocument();
+  });
+});

@@ -80,6 +80,45 @@ describe("conversations", () => {
   });
 });
 
+// From a finished conversation to a new story built on it (ADR-0029).
+describe("a related story", () => {
+  it("starts from a completed conversation in the history", async () => {
+    serveStories();
+    const summary = aConversationSummary({
+      title: "The Fox and the Moon",
+      status: "Completed",
+      resumable: false,
+      latestCompleteStoryId: "story-7",
+    });
+    worker.use(
+      http.get("/api/stories/conversations", () => HttpResponse.json([summary])),
+      http.get(`/api/stories/conversations/${summary.id}`, () =>
+        HttpResponse.json(
+          aConversation({
+            id: summary.id,
+            title: summary.title,
+            status: "Completed",
+            resumable: false,
+            latestCompleteStoryId: "story-7",
+          }),
+        ),
+      ),
+    );
+    render(<DashboardPage />);
+    await screen.findByText(/No stories yet/);
+
+    await userEvent.click(screen.getByRole("button", { name: "Conversations" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Completed" }));
+    await userEvent.click(screen.getByRole("button", { name: "The Fox and the Moon" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New story based on this one" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "New story based on “The Fox and the Moon”" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+});
+
 describe("deleting a story", () => {
   it("asks for confirmation, then removes the card without reloading the list", async () => {
     const story = aStorySummary({ title: "To delete" });
