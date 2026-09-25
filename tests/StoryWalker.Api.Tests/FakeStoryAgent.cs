@@ -1,6 +1,10 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 using StoryWalker.Application.Agent;
 using StoryWalker.Application.Brief;
+using StoryWalker.Domain.Entities;
+using StoryWalker.Domain.Enums;
+using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Api.Tests;
 
@@ -12,8 +16,12 @@ namespace StoryWalker.Api.Tests;
 /// <see cref="ConfirmMessage"/> makes it emit a ready brief, driving the endpoint's enqueue path;
 /// sending <see cref="FilteredMessage"/> makes it throw <see cref="ContentFilteredException"/>, as the
 /// real agent does when the model's content filter refuses a turn.
+/// <para>
+/// Like the real agent, it writes a <see cref="Conversation"/> row for every id it issues, so a
+/// story queued from it can point at its conversation (ADR-0027) without breaking the foreign key.
+/// </para>
 /// </summary>
-internal sealed class FakeStoryAgent : IStoryAgent
+internal sealed class FakeStoryAgent(IServiceScopeFactory scopes) : IStoryAgent
 {
     /// <summary>Sentinel message that makes the fake agent return a ready brief.</summary>
     public const string ConfirmMessage = "confirm-brief";
@@ -43,7 +51,7 @@ internal sealed class FakeStoryAgent : IStoryAgent
 
     private readonly ConcurrentDictionary<string, Guid> _issued = new();
 
-    public Task<AgentTurnResult> SendAsync(
+    public async Task<AgentTurnResult> SendAsync(
         Guid userId,
         string? conversationId,
         string message,
@@ -64,13 +72,21 @@ internal sealed class FakeStoryAgent : IStoryAgent
             throw new ContentFilteredException();
         }
 
-        var id = conversationId ?? Guid.NewGuid().ToString();
+        var id = conversationId;
+        if (id is null)
+        {
+            id = Guid.NewGuid().ToString();
+            await using var scope = scopes.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<StoryWalkerDbContext>();
+            db.Conversations.Add(
+                new Conversation { Id = Guid.Parse(id), UserId = userId, Status = ConversationStatus.Active }
+            );
+            await db.SaveChangesAsync(ct);
+        }
         _issued[id] = userId;
 
-        return Task.FromResult(
-            message == ConfirmMessage
-                ? new AgentTurnResult(id, "Brief ready.", BriefReady: true, SampleBrief)
-                : new AgentTurnResult(id, $"Echo: {message}", BriefReady: false)
-        );
+        return message == ConfirmMessage
+            ? new AgentTurnResult(id, "Brief ready.", BriefReady: true, SampleBrief)
+            : new AgentTurnResult(id, $"Echo: {message}", BriefReady: false);
     }
 }

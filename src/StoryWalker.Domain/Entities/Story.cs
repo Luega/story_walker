@@ -24,7 +24,16 @@ public class Story : EntityBase
     /// <summary>From the brief; appended to every page's illustration prompt by the worker.</summary>
     public required string ArtStyle { get; set; }
 
+    /// <summary>
+    /// The conversation whose confirmation queued this story. If the story fails, the worker
+    /// appends the reason and the agent's advice to it, so the parent can pick the conversation up
+    /// again (ADR-0027). Null for stories from before the link existed.
+    /// </summary>
+    public Guid? ConversationId { get; set; }
+
     public User User { get; set; } = null!;
+
+    public Conversation? Conversation { get; set; }
 
     public ICollection<Page> Pages { get; set; } = [];
 }

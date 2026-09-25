@@ -76,7 +76,14 @@ public static class StoryEndpoints
                         // ordinary conversational turn — echo the reply with 200.
                         if (turn is { BriefReady: true, Brief: not null })
                         {
-                            var story = await StartGenerationAsync(db, publisher, me, turn.Brief, ct);
+                            var story = await StartGenerationAsync(
+                                db,
+                                publisher,
+                                me,
+                                Guid.Parse(turn.ConversationId),
+                                turn.Brief,
+                                ct
+                            );
 
                             return Results.Accepted(
                                 $"/stories/{story.Id}",
@@ -261,6 +268,7 @@ public static class StoryEndpoints
         StoryWalkerDbContext db,
         IBriefPublisher publisher,
         Guid userId,
+        Guid conversationId,
         GenerationBrief brief,
         CancellationToken ct
     )
@@ -269,6 +277,8 @@ public static class StoryEndpoints
         {
             Id = Guid.NewGuid(),
             UserId = userId,
+            // Where a failure is reported back to, with the agent's advice (ADR-0027).
+            ConversationId = conversationId,
             Title = brief.Title,
             TargetAge = brief.TargetAge,
             Status = StoryStatus.Generating,

@@ -114,6 +114,15 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
         Assert.Equal(FakeStoryAgent.SampleBrief.ArtStyle, story.ArtStyle);
         Assert.Equal(FakeStoryAgent.SampleBrief.TargetAge, story.TargetAge);
 
+        // Linked to the conversation that confirmed it, so a failure can be reported back there
+        // (ADR-0027).
+        Assert.NotNull(story.ConversationId);
+        Assert.True(
+            await _factory.ExecuteDbAsync(db =>
+                db.Conversations.AnyAsync(c => c.Id == story.ConversationId, Ct)
+            )
+        );
+
         // The brief was enqueued for that same story id.
         Assert.Contains(
             _factory.Publisher.Published,

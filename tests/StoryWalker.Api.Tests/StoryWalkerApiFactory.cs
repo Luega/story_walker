@@ -112,7 +112,9 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
 
         builder.ConfigureTestServices(services =>
         {
-            services.AddSingleton<IStoryAgent>(new FakeStoryAgent());
+            services.AddSingleton<IStoryAgent>(sp => new FakeStoryAgent(
+                sp.GetRequiredService<IServiceScopeFactory>()
+            ));
             services.AddSingleton<IBriefPublisher>(Publisher);
 
             // Swap JWKS discovery for a local key. This runs after the app's own Configure delegate

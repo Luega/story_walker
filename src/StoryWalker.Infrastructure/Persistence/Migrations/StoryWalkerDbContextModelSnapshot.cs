@@ -133,6 +133,9 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -154,6 +157,8 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
 
                     b.HasIndex("UserId");
 
@@ -241,11 +246,18 @@ namespace StoryWalker.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("StoryWalker.Domain.Entities.Story", b =>
                 {
+                    b.HasOne("StoryWalker.Domain.Entities.Conversation", "Conversation")
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("StoryWalker.Domain.Entities.User", "User")
                         .WithMany("Stories")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Conversation");
 
                     b.Navigation("User");
                 });
