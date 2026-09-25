@@ -196,6 +196,7 @@ public static class DependencyInjection
         // Only used when a deployment hands back a URL instead of the image bytes.
         services.AddHttpClient();
         services.AddScoped<StoryPersister>();
+        services.AddScoped<IllustrationPromptRewriter>();
         services.AddScoped<PageImageRenderer>();
 
         return services;

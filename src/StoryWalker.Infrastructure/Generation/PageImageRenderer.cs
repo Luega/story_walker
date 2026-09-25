@@ -24,6 +24,7 @@ public sealed class PageImageRenderer(
     StoryWalkerDbContext db,
     IImageGenerator generator,
     IImageStore store,
+    IllustrationPromptRewriter rewriter,
     IHttpClientFactory httpClientFactory,
     ILogger<PageImageRenderer> logger
 )
@@ -65,10 +66,60 @@ public sealed class PageImageRenderer(
         {
             response = await GenerateWithBackoffAsync(prompt, ct);
         }
+        catch (Exception ex) when (IsModerationRefusal(ex))
+        {
+            // The same prompt would be refused again, but the story is usually fine and only the
+            // staging of the scene tripped the classifier. Reword this page's illustration prompt,
+            // never its text, and try once more (ADR-0025).
+            logger.LogWarning(
+                ex,
+                "Image generation for story {StoryId} page {PageNo} was refused on moderation grounds; rewriting its illustration prompt once.",
+                storyId,
+                pageNo
+            );
+
+            var rewritten = await rewriter.RewriteAsync(
+                page.IllustrationPrompt,
+                page.Content,
+                page.Story.TargetAge,
+                ct
+            );
+            if (rewritten is null)
+            {
+                logger.LogError(
+                    "No usable rewrite for story {StoryId} page {PageNo}; marking the page Failed.",
+                    storyId,
+                    pageNo
+                );
+                return await MarkFailedAsync(page.Id, ct);
+            }
+
+            // Saved with the page whichever way the second attempt goes, so the database records
+            // the prompt that was actually sent.
+            page.IllustrationPrompt = rewritten;
+
+            try
+            {
+                response = await GenerateWithBackoffAsync(
+                    BuildPrompt(rewritten, page.Story.ArtStyle, page.Story.TargetAge),
+                    ct
+                );
+            }
+            catch (Exception retryEx) when (!IsTransient(retryEx))
+            {
+                logger.LogError(
+                    retryEx,
+                    "Image generation for story {StoryId} page {PageNo} failed again with the rewritten prompt; marking the page Failed.",
+                    storyId,
+                    pageNo
+                );
+                return await MarkFailedAsync(page.Id, ct);
+            }
+        }
         catch (Exception ex) when (!IsTransient(ex))
         {
-            // Permanent: a 4xx from the model (wrong route or deployment, bad credentials, a
-            // refused prompt) returns the same answer however many times it is asked. Failing the
+            // Permanent: a 4xx from the model (wrong route or deployment, bad credentials) returns
+            // the same answer however many times it is asked. Failing the
             // page — instead of throwing — keeps Service Bus from redelivering the message ten times
             // and dead-lettering the story while it sits in Generating forever, which is exactly
             // what a 404 from the image route did on 2026-09-15.
@@ -182,6 +233,29 @@ public sealed class PageImageRenderer(
         await db.SaveChangesAsync(ct);
         return false;
     }
+
+    /// <summary>
+    /// The error codes image providers use when their safety system refuses a prompt:
+    /// <c>moderation_blocked</c> (gpt-image), <c>content_policy_violation</c> (dall-e), and Azure's
+    /// own content filter. Matched in the message, where the image generators put the response body.
+    /// </summary>
+    private static readonly string[] ModerationCodes =
+    [
+        "moderation_blocked",
+        "content_policy_violation",
+        "content_filter",
+        "ResponsibleAIPolicyViolation",
+    ];
+
+    /// <summary>
+    /// A refusal by the image model's safety system (ADR-0025): a 400, or an error with no HTTP
+    /// status, that names one of <see cref="ModerationCodes"/>. Other permanent failures, such as a
+    /// wrong route or a rejected key, have nothing to do with the prompt's wording, so rewriting it
+    /// would change nothing.
+    /// </summary>
+    internal static bool IsModerationRefusal(Exception ex) =>
+        ex is not HttpRequestException { StatusCode: not null and not HttpStatusCode.BadRequest }
+        && ModerationCodes.Any(code => ex.Message.Contains(code, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Worth retrying: the request never got an HTTP answer, or the answer says "not now" —

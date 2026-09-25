@@ -228,6 +228,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         {
             ThrowOnGenerate = new HttpRequestException("permanent", null, status),
         };
+        var chat = new RecordingChatClient { Reply = RewrittenPrompt };
 
         await _factory.ExecuteDbAsync(async db =>
         {
@@ -235,10 +236,12 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
             // No throw: throwing would abandon the message and Service Bus would redeliver it ten
             // times for an error that cannot change — the exact loop that dead-lettered a real
             // story when the image route returned 404 (2026-09-15).
-            Assert.False(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+            Assert.False(await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct));
         });
 
         Assert.Equal(1, generator.CallCount);
+        // Not a moderation refusal, so rewording the prompt would change nothing (ADR-0025).
+        Assert.Empty(chat.Requests);
         var page = await _factory.ExecuteDbAsync(db =>
             db.Pages.SingleAsync(p => p.StoryId == storyId && p.PageNo == 1, Ct)
         );
@@ -289,24 +292,112 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         Assert.Equal(2, generator.CallCount);
     }
 
+    // What gpt-image-1-mini answered for page 3 of a real story on 2026-09-24 (ADR-0025), as
+    // AzureOpenAIImageGenerator carries it: the status on the exception, the body in the message.
+    private static HttpRequestException ModerationBlocked() =>
+        new(
+            """Image request to /openai/deployments/gpt-image-1-mini/images/generations failed with 400 BadRequest: { "error": { "message": "Your request was rejected by the safety system.", "type": "image_generation_user_error", "code": "moderation_blocked" } }""",
+            null,
+            HttpStatusCode.BadRequest
+        );
+
     [Fact]
-    public async Task Content_filter_rejection_is_not_retried()
+    public async Task Moderation_refusal_renders_the_page_from_a_rewritten_prompt()
     {
         await _factory.ResetAsync();
         var storyId = await SeedGeneratingStoryAsync();
-        var generator = new FakeImageGenerator
-        {
-            ThrowOnGenerate = new InvalidOperationException("ResponsibleAIPolicyViolation"),
-        };
+        var generator = new FakeImageGenerator { ThrowOnGenerate = ModerationBlocked(), FailuresBeforeSuccess = 1 };
 
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct);
+            Assert.True(await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
         });
 
-        // Retrying a prompt the filter rejects wastes the budget on a certain refusal.
+        Assert.Equal(2, generator.CallCount);
+        // The second attempt draws the rewrite, with the story's style suffix composed as always.
+        Assert.StartsWith(RewrittenPrompt, generator.Prompts[1], StringComparison.Ordinal);
+        Assert.Contains("Art style: soft watercolour.", generator.Prompts[1], StringComparison.Ordinal);
+
+        var page = await _factory.ExecuteDbAsync(db =>
+            db.Pages.SingleAsync(p => p.StoryId == storyId && p.PageNo == 1, Ct)
+        );
+        Assert.Equal(PageStatus.Complete, page.Status);
+        Assert.NotNull(page.ImageUrl);
+        // The database records what was actually drawn...
+        Assert.Equal(RewrittenPrompt, page.IllustrationPrompt);
+        // ...and the story the child reads is exactly the one the parent confirmed.
+        Assert.Equal("Page 1 text.", page.Content);
+    }
+
+    [Fact]
+    public async Task The_rewrite_is_asked_for_with_the_refused_prompt_and_the_page_text()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        var generator = new FakeImageGenerator { ThrowOnGenerate = ModerationBlocked(), FailuresBeforeSuccess = 1 };
+        var chat = new RecordingChatClient { Reply = RewrittenPrompt };
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct);
+        });
+
+        // The page's own prompt, not the composed one: the style suffix is re-added in code.
+        var request = Assert.Single(chat.Requests)[^1].Text;
+        Assert.Contains("Fox, a small red fox, scene 1", request, StringComparison.Ordinal);
+        Assert.DoesNotContain("Art style:", request, StringComparison.Ordinal);
+        Assert.Contains("Page 1 text.", request, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_refused_rewrite_fails_the_page_without_a_third_attempt()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        // Refuses every time, the rewrite included.
+        var generator = new FakeImageGenerator { ThrowOnGenerate = ModerationBlocked() };
+        var chat = new RecordingChatClient { Reply = RewrittenPrompt };
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            Assert.False(await NewRenderer(db, generator, new InMemoryImageStore(), chat).RenderAsync(storyId, 1, Ct));
+        });
+
+        // One rewrite, never a chain of them drifting further from the story.
+        Assert.Equal(2, generator.CallCount);
+        Assert.Single(chat.Requests);
+        var page = await _factory.ExecuteDbAsync(db =>
+            db.Pages.SingleAsync(p => p.StoryId == storyId && p.PageNo == 1, Ct)
+        );
+        Assert.Equal(PageStatus.Failed, page.Status);
+    }
+
+    [Fact]
+    public async Task No_usable_rewrite_fails_the_page_after_one_attempt()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        var generator = new FakeImageGenerator { ThrowOnGenerate = ModerationBlocked() };
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            Assert.False(
+                await NewRenderer(db, generator, new InMemoryImageStore(), new RecordingChatClient { Reply = "" })
+                    .RenderAsync(storyId, 1, Ct)
+            );
+        });
+
+        // Retrying the refused prompt unchanged would only get the same answer.
         Assert.Equal(1, generator.CallCount);
+        var page = await _factory.ExecuteDbAsync(db =>
+            db.Pages.SingleAsync(p => p.StoryId == storyId && p.PageNo == 1, Ct)
+        );
+        Assert.Equal(PageStatus.Failed, page.Status);
+        Assert.Equal("Fox, a small red fox, scene 1", page.IllustrationPrompt);
     }
 
     [Fact]
@@ -347,12 +438,26 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         Assert.Equal(StoryStatus.Failed, status);
     }
 
+    /// <summary>What the stub chat model answers when the renderer asks for a rewrite (ADR-0025).</summary>
+    private const string RewrittenPrompt = "Fox, a small red fox, sitting calmly under the moon";
+
     private static PageImageRenderer NewRenderer(
         StoryWalkerDbContext db,
         IImageGenerator generator,
-        InMemoryImageStore store
+        InMemoryImageStore store,
+        RecordingChatClient? chat = null
     ) =>
-        new(db, generator, store, new StubHttpClientFactory(), NullLogger<PageImageRenderer>.Instance)
+        new(
+            db,
+            generator,
+            store,
+            new IllustrationPromptRewriter(
+                chat ?? new RecordingChatClient { Reply = RewrittenPrompt },
+                NullLogger<IllustrationPromptRewriter>.Instance
+            ),
+            new StubHttpClientFactory(),
+            NullLogger<PageImageRenderer>.Instance
+        )
         {
             // No real waiting in tests; the backoff itself is asserted via the call count.
             FirstRetryDelay = TimeSpan.Zero,
