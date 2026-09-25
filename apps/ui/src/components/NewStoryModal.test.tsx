@@ -3,6 +3,7 @@ import { userEvent } from "vitest/browser";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { worker } from "@/test/handlers";
+import { aConversation } from "@/test/factories";
 import { NewStoryModal } from "./NewStoryModal";
 
 const CONVERSATIONS = "/api/stories/conversations";
@@ -160,5 +161,67 @@ describe("the saved story settings", () => {
       "href",
       "/settings",
     );
+  });
+});
+
+// Opened from the conversation history (ADR-0028).
+describe("an existing conversation", () => {
+  function renderExisting(conversation = aConversation()) {
+    worker.use(
+      http.get(`${CONVERSATIONS}/${conversation.id}`, () => HttpResponse.json(conversation)),
+    );
+    render(
+      <NewStoryModal conversationId={conversation.id} onClose={vi.fn()} onQueued={vi.fn()} />,
+    );
+    return conversation;
+  }
+
+  it("shows what was said instead of the greeting, under the conversation's title", async () => {
+    renderExisting(
+      aConversation({
+        title: "George and the Paper Ears",
+        messages: [
+          { role: "user", text: "A story about George" },
+          { role: "assistant", text: "The picture could not be made. Shall we change the scene?" },
+        ],
+      }),
+    );
+
+    expect(await screen.findByText("A story about George")).toBeInTheDocument();
+    expect(
+      screen.getByText("The picture could not be made. Shall we change the scene?"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tell me about the story you'd like/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "George and the Paper Ears" }),
+    ).toBeInTheDocument();
+  });
+
+  it("continues that conversation rather than starting a new one", async () => {
+    const conversation = renderExisting();
+    const turns = agentReplies("Great, let's change it", conversation.id);
+
+    await userEvent.fill(await screen.findByRole("textbox"), "Yes, put the scissors down");
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByText("Great, let's change it")).toBeInTheDocument();
+    expect(turns).toEqual([{ conversationId: conversation.id, message: "Yes, put the scissors down" }]);
+  });
+
+  it("can only be read once its story has been created", async () => {
+    renderExisting(aConversation({ status: "Completed", resumable: false }));
+
+    expect(await screen.findByText(/already been created/)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("says so when the conversation no longer exists", async () => {
+    worker.use(
+      http.get(`${CONVERSATIONS}/:id`, () => new HttpResponse(null, { status: 404 })),
+    );
+    render(<NewStoryModal conversationId="gone" onClose={vi.fn()} onQueued={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no longer available/);
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });
