@@ -169,6 +169,7 @@ public static class ConversationEndpoints
         public ConversationStatus Status { get; init; }
         public string? LatestStoryTitle { get; init; }
         public StoryStatus? LatestStoryStatus { get; init; }
+        public string? BasedOnStoryTitle { get; init; }
         public string? FirstUserMessage { get; init; }
         public Guid? LatestCompleteStoryId { get; init; }
         public DateTime LastActivityAt { get; init; }
@@ -199,6 +200,10 @@ public static class ConversationEndpoints
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => (Guid?)s.Id)
                     .FirstOrDefault(),
+                BasedOnStoryTitle = db
+                    .Stories.Where(s => s.Id == c.BasedOnStoryId)
+                    .Select(s => s.Title)
+                    .FirstOrDefault(),
                 FirstUserMessage = c
                     .Messages.Where(m => m.Role == MessageRole.User)
                     .OrderBy(m => m.Seq)
@@ -212,7 +217,7 @@ public static class ConversationEndpoints
     private static ConversationSummaryDto ToSummaryDto(SummaryRow c) =>
         new(
             c.Id,
-            DisplayTitle(c.Title, c.LatestStoryTitle, c.FirstUserMessage),
+            DisplayTitle(c.Title, c.LatestStoryTitle, c.BasedOnStoryTitle, c.FirstUserMessage),
             c.Status.ToString(),
             Resumable: c.Status == ConversationStatus.Active,
             StoryFailed: c.LatestStoryStatus == StoryStatus.Failed,
@@ -222,9 +227,16 @@ public static class ConversationEndpoints
 
     /// <summary>
     /// The user's own title wins; else the latest story queued from the conversation, so the default
-    /// follows new stories with nothing to sync (ADR-0028); else the start of the first message.
+    /// follows new stories with nothing to sync (ADR-0028); else, for a related story not created
+    /// yet, the story it builds on, matching the chat's own heading (ADR-0029); else the start of
+    /// the first message.
     /// </summary>
-    private static string DisplayTitle(string? own, string? latestStory, string? firstMessage)
+    private static string DisplayTitle(
+        string? own,
+        string? latestStory,
+        string? basedOnStory,
+        string? firstMessage
+    )
     {
         if (!string.IsNullOrWhiteSpace(own))
         {
@@ -234,6 +246,11 @@ public static class ConversationEndpoints
         if (!string.IsNullOrWhiteSpace(latestStory))
         {
             return latestStory;
+        }
+
+        if (!string.IsNullOrWhiteSpace(basedOnStory))
+        {
+            return $"New story based on “{basedOnStory}”";
         }
 
         var preview = (firstMessage ?? string.Empty).ReplaceLineEndings(" ").Trim();

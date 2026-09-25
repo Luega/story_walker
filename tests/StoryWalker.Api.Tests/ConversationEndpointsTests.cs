@@ -77,6 +77,41 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
         Assert.Equal(first[..60].TrimEnd() + "…", title);
     }
 
+    // The chat's heading says "New story based on …" (ADR-0029); the history has to say the same
+    // thing, rather than whatever short first message the parent typed.
+    [Fact]
+    public async Task A_related_story_not_yet_created_is_titled_after_the_story_it_builds_on()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var original = await SeedStoryAsync(me, "The Fox and the Moon", StoryStatus.Complete);
+        await SeedConversationAsync(
+            me,
+            ConversationStatus.Active,
+            basedOnStoryId: original,
+            messages: [(MessageRole.User, "A sequel")]
+        );
+
+        Assert.Equal("New story based on “The Fox and the Moon”", Assert.Single(await ListAsync()).Title);
+    }
+
+    [Fact]
+    public async Task A_related_story_takes_its_own_title_once_created()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var original = await SeedStoryAsync(me, "The Fox and the Moon", StoryStatus.Complete);
+        var id = await SeedConversationAsync(
+            me,
+            ConversationStatus.Completed,
+            basedOnStoryId: original,
+            messages: [(MessageRole.User, "A sequel")]
+        );
+        await LinkStoryAsync(id, me, "The Fox in Winter", StoryStatus.Complete);
+
+        var titles = (await ListAsync()).Select(c => c.Title).ToList();
+
+        Assert.Equal(["The Fox in Winter"], titles);
+    }
+
     [Fact]
     public async Task Flags_what_can_be_resumed_and_what_failed()
     {
@@ -316,6 +351,7 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
         Guid userId,
         ConversationStatus status,
         string? title = null,
+        Guid? basedOnStoryId = null,
         params (MessageRole Role, string Content)[] messages
     ) =>
         _factory.ExecuteDbAsync(async db =>
@@ -326,6 +362,7 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
                 UserId = userId,
                 Status = status,
                 Title = title,
+                BasedOnStoryId = basedOnStoryId,
             };
             db.Conversations.Add(conversation);
             for (var i = 0; i < messages.Length; i++)
@@ -371,6 +408,24 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
             db.ConversationMessages.Where(m => m.ConversationId == conversationId)
                 .ExecuteUpdateAsync(set => set.SetProperty(m => m.CreatedAt, DateTime.UtcNow - age), Ct)
         );
+
+    /// <summary>A story of the user's that no conversation queued, to start a related one from.</summary>
+    private Task<Guid> SeedStoryAsync(Guid userId, string title, StoryStatus status) =>
+        _factory.ExecuteDbAsync(async db =>
+        {
+            var story = new Story
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Title = title,
+                TargetAge = 6,
+                ArtStyle = "watercolour",
+                Status = status,
+            };
+            db.Stories.Add(story);
+            await db.SaveChangesAsync(Ct);
+            return story.Id;
+        });
 
     private Task<Guid> LinkStoryAsync(Guid conversationId, Guid userId, string title, StoryStatus status) =>
         _factory.ExecuteDbAsync(async db =>
