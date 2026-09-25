@@ -1,13 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { deleteStory, listStories, renameStory, type StorySummary } from "@/lib/api";
+import {
+  deleteStory,
+  getQuota,
+  listStories,
+  renameStory,
+  type Quota,
+  type StorySummary,
+} from "@/lib/api";
 import { StoryCard } from "@/components/StoryCard";
 import { NewStoryModal, type BasedOn } from "@/components/NewStoryModal";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 const POLL_MS = 5000;
+
+/** When the weekly limit resets, in the browser's own time zone (the API counts in UTC). */
+const resetFormat = new Intl.DateTimeFormat("en-GB", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 export default function DashboardPage() {
   const [stories, setStories] = useState<StorySummary[] | null>(null);
@@ -18,6 +34,9 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // The finished story a new one builds on (ADR-0029); null for a story from scratch.
   const [basedOn, setBasedOn] = useState<BasedOn | null>(null);
+  // The weekly limit (ADR-0030); null until known, or if it could not be loaded.
+  const [quota, setQuota] = useState<Quota | null>(null);
+  const atLimit = quota?.remaining === 0;
   const [pendingDelete, setPendingDelete] = useState<StorySummary | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [queuedId, setQueuedId] = useState<string | null>(null);
@@ -36,6 +55,11 @@ export default function DashboardPage() {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function load() {
+      // Refreshed with the list, since a story finishing is what moves it. A failure only hides
+      // the counter: the API still enforces the limit.
+      getQuota()
+        .then((q) => !cancelled && setQuota(q))
+        .catch(() => {});
       try {
         const data = await listStories();
         if (cancelled) return;
@@ -98,6 +122,17 @@ export default function DashboardPage() {
         <div>
           <h1 className="font-display text-4xl font-semibold tracking-tight">Your stories</h1>
           <p className="mt-1 text-muted">Pick a story to read, or create a new one.</p>
+          {quota && !atLimit && (
+            <p className="mt-1 text-sm text-muted">
+              {quota.remaining} of {quota.limit} stories left this week
+            </p>
+          )}
+          {quota && atLimit && (
+            <p className="mt-1 text-sm text-amber-800">
+              You&apos;ve used this week&apos;s {quota.limit} stories. You can create more from{" "}
+              {resetFormat.format(new Date(quota.resetsAt))}.
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <button
@@ -114,7 +149,8 @@ export default function DashboardPage() {
               setBasedOn(null);
               setModalOpen(true);
             }}
-            className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105"
+            disabled={atLimit}
+            className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
             + New story
           </button>

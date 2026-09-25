@@ -119,6 +119,45 @@ describe("a related story", () => {
   });
 });
 
+// The weekly limit (ADR-0030).
+describe("the weekly limit", () => {
+  function serveQuota(remaining: number, resetsAt = "2026-09-28T00:00:00Z") {
+    worker.use(
+      http.get("/api/me/quota", () =>
+        HttpResponse.json({ limit: 7, used: 7 - remaining, remaining, resetsAt }),
+      ),
+    );
+  }
+
+  it("says how many stories are left this week", async () => {
+    serveStories();
+    serveQuota(5);
+    render(<DashboardPage />);
+
+    expect(await screen.findByText("5 of 7 stories left this week")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ New story" })).toBeEnabled();
+  });
+
+  it("at the limit, says when more are possible, in local time, and offers no new story", async () => {
+    serveStories();
+    serveQuota(0, "2026-09-28T00:00:00Z");
+    render(<DashboardPage />);
+
+    // Shown in the browser's own time zone: 02:00 on Monday in Italy in September.
+    const when = new Intl.DateTimeFormat("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date("2026-09-28T00:00:00Z"));
+    expect(await screen.findByText(new RegExp(`You've used this week's 7 stories`))).toHaveTextContent(
+      when,
+    );
+    expect(screen.getByRole("button", { name: "+ New story" })).toBeDisabled();
+  });
+});
+
 describe("deleting a story", () => {
   it("asks for confirmation, then removes the card without reloading the list", async () => {
     const story = aStorySummary({ title: "To delete" });
