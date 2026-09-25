@@ -7,6 +7,7 @@ using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using StoryWalker.Application.Agent;
 using StoryWalker.Application.Images;
 using StoryWalker.Application.Messaging;
@@ -15,6 +16,7 @@ using StoryWalker.Infrastructure.Generation;
 using StoryWalker.Infrastructure.Images;
 using StoryWalker.Infrastructure.Messaging;
 using StoryWalker.Infrastructure.Persistence;
+using StoryWalker.Infrastructure.Quota;
 
 namespace StoryWalker.Infrastructure;
 
@@ -35,6 +37,10 @@ public static class DependencyInjection
     )
     {
         services.AddDbContext<StoryWalkerDbContext>(options => options.UseNpgsql(connectionString));
+
+        // The weekly story limit (ADR-0030). The clock is injected so tests can stop it.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<StoryQuotaService>();
 
         return services;
     }
