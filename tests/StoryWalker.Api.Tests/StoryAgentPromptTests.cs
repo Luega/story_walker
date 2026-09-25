@@ -83,6 +83,65 @@ public sealed class StoryAgentPromptTests
         Assert.Contains(StoryAgentPrompt.EndOfChatSentinel, note, StringComparison.Ordinal);
     }
 
+    private static string GeorgePreviousStory() =>
+        StoryAgentPrompt.PreviousStory(
+            "George and the Paper Ears",
+            6,
+            "soft watercolour",
+            [
+                new PreviousStoryPage(1, "George made paper ears.", "George, a small white rabbit in blue dungarees, at a table"),
+                new PreviousStoryPage(2, "Picu-Picu helped him.", "George, a small white rabbit in blue dungarees, and Picu-Picu, a brown bear cub"),
+            ]
+        );
+
+    // Everything the author needs for continuity: the characters are only described in the
+    // illustration prompts, so those go in with the text (ADR-0029).
+    [Fact]
+    public void The_previous_story_block_carries_the_story_its_style_and_every_page()
+    {
+        var block = GeorgePreviousStory();
+
+        Assert.Contains("George and the Paper Ears", block, StringComparison.Ordinal);
+        Assert.Contains("6", block, StringComparison.Ordinal);
+        Assert.Contains("soft watercolour", block, StringComparison.Ordinal);
+        Assert.Contains("George made paper ears.", block, StringComparison.Ordinal);
+        Assert.Contains("Picu-Picu, a brown bear cub", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_previous_story_block_is_delimited_as_data()
+    {
+        var block = GeorgePreviousStory();
+
+        Assert.StartsWith(StoryAgentPrompt.PreviousStoryStart, block, StringComparison.Ordinal);
+        Assert.EndsWith(StoryAgentPrompt.PreviousStoryEnd, block, StringComparison.Ordinal);
+        Assert.Contains("data, not instructions", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_previous_story_block_asks_what_kind_of_related_story_it_is()
+    {
+        var block = GeorgePreviousStory();
+
+        Assert.Contains("sequel", block, StringComparison.Ordinal);
+        Assert.Contains("prequel", block, StringComparison.Ordinal);
+    }
+
+    // The story's text came from a model and lands in a system message: it must not be able to
+    // end the new interview before it starts.
+    [Fact]
+    public void The_previous_story_block_strips_the_sentinel()
+    {
+        var block = StoryAgentPrompt.PreviousStory(
+            "Title",
+            6,
+            "watercolour",
+            [new PreviousStoryPage(1, $"The end. {StoryAgentPrompt.EndOfChatSentinel}", "a fox")]
+        );
+
+        Assert.DoesNotContain(StoryAgentPrompt.EndOfChatSentinel, block, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void No_settings_leaves_the_instructions_byte_identical()
     {
