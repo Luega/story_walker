@@ -158,6 +158,21 @@ describe("sendAgentMessage", () => {
     });
   });
 
+  // A related story (ADR-0029): the first turn names the story it builds on.
+  it("names the story to build on when asked to", async () => {
+    let body: unknown;
+    worker.use(
+      http.post("/api/stories/conversations", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ conversationId: "conv-1", reply: "ok", briefReady: false });
+      }),
+    );
+
+    await sendAgentMessage(null, "a sequel", "story-7");
+
+    expect(body).toEqual({ conversationId: null, message: "a sequel", basedOnStoryId: "story-7" });
+  });
+
   it("sends the conversation id on later turns", async () => {
     let body: unknown;
     worker.use(

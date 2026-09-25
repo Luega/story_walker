@@ -65,6 +65,7 @@ export function aConversationSummary(
     resumable: true,
     storyFailed: false,
     lastActivityAt: "2026-09-01T10:00:00Z",
+    latestCompleteStoryId: null,
     ...overrides,
   };
 }
@@ -79,6 +80,7 @@ export function aConversation(overrides: Partial<Conversation> = {}): Conversati
       { role: "user", text: "A story about a dragon who is afraid of the dark" },
       { role: "assistant", text: "Lovely! How old is the child?" },
     ],
+    latestCompleteStoryId: null,
     ...overrides,
   };
 }

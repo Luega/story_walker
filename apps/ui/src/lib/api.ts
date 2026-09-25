@@ -52,6 +52,8 @@ export interface ConversationSummary {
   /** True when the latest story made from it failed (ADR-0027). */
   storyFailed: boolean;
   lastActivityAt: string;
+  /** The newest finished story made from it, to build a related one on (ADR-0029). */
+  latestCompleteStoryId: string | null;
 }
 
 /** Only what the parent and the agent said: the API leaves out system messages and the sentinel. */
@@ -66,6 +68,7 @@ export interface Conversation {
   status: ConversationStatus;
   resumable: boolean;
   messages: ConversationMessage[];
+  latestCompleteStoryId: string | null;
 }
 
 export type AgentTurn =
@@ -121,13 +124,15 @@ export async function deleteStory(id: string): Promise<void> {
 export async function sendAgentMessage(
   conversationId: string | null,
   message: string,
+  /** Starts a new conversation from one of the user's finished stories (ADR-0029). */
+  basedOnStoryId?: string,
 ): Promise<AgentTurn> {
   let res: Response;
   try {
     res = await fetch(`${BASE}/stories/conversations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, message }),
+      body: JSON.stringify({ conversationId, message, basedOnStoryId }),
     });
   } catch {
     return { kind: "error", detail: "Could not reach the server." };
