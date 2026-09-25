@@ -14,6 +14,13 @@ public class Conversation : EntityBase
 
     public ConversationStatus Status { get; set; }
 
+    /// <summary>
+    /// A title the user chose in the conversation history, or null. Only the user's choice is
+    /// stored: the title shown defaults to the latest linked story's, computed on read, so it
+    /// follows new stories without any syncing (ADR-0028).
+    /// </summary>
+    public string? Title { get; set; }
+
     /// <summary>The full message history, in <see cref="ConversationMessage.Seq"/> order.</summary>
     public ICollection<ConversationMessage> Messages { get; set; } = [];
 }
