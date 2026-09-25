@@ -401,24 +401,78 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
     }
 
     [Fact]
-    public async Task CompleteStory_marks_complete_when_at_least_one_page_rendered()
+    public async Task CompleteStory_marks_complete_when_every_page_rendered()
     {
         await _factory.ResetAsync();
         var storyId = await SeedGeneratingStoryAsync();
-        var generator = new FakeImageGenerator();
 
         await _factory.ExecuteDbAsync(async db =>
         {
             await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
-            await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct);
+            var renderer = NewRenderer(db, new FakeImageGenerator(), new InMemoryImageStore());
+            for (var pageNo = 1; pageNo <= GenerationBriefValidator.PageCount; pageNo++)
+            {
+                await renderer.RenderAsync(storyId, pageNo, Ct);
+            }
             await new StoryPersister(db).CompleteStoryAsync(storyId, Ct);
         });
 
-        var status = await _factory.ExecuteDbAsync(db =>
+        Assert.Equal(StoryStatus.Complete, await StoryStatusAsync(storyId));
+    }
+
+    // A picture book with a missing picture is not delivered (ADR-0026): five good pages are not
+    // enough.
+    [Fact]
+    public async Task CompleteStory_marks_failed_when_one_page_failed()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            var renderer = NewRenderer(db, new FakeImageGenerator(), new InMemoryImageStore());
+            for (var pageNo = 1; pageNo <= GenerationBriefValidator.PageCount; pageNo++)
+            {
+                await renderer.RenderAsync(storyId, pageNo, Ct);
+            }
+
+            var page3 = await db.Pages.SingleAsync(p => p.StoryId == storyId && p.PageNo == 3, Ct);
+            page3.Status = PageStatus.Failed;
+            page3.ImageUrl = null;
+            await db.SaveChangesAsync(Ct);
+
+            await new StoryPersister(db).CompleteStoryAsync(storyId, Ct);
+        });
+
+        Assert.Equal(StoryStatus.Failed, await StoryStatusAsync(storyId));
+    }
+
+    // The worker stops at the first failed page (ADR-0026), leaving the rest Pending.
+    [Fact]
+    public async Task CompleteStory_marks_failed_when_a_page_was_never_rendered()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            var renderer = NewRenderer(db, new FakeImageGenerator(), new InMemoryImageStore());
+            for (var pageNo = 1; pageNo < GenerationBriefValidator.PageCount; pageNo++)
+            {
+                await renderer.RenderAsync(storyId, pageNo, Ct);
+            }
+            await new StoryPersister(db).CompleteStoryAsync(storyId, Ct);
+        });
+
+        Assert.Equal(StoryStatus.Failed, await StoryStatusAsync(storyId));
+    }
+
+    private Task<StoryStatus> StoryStatusAsync(Guid storyId) =>
+        _factory.ExecuteDbAsync(db =>
             db.Stories.Where(s => s.Id == storyId).Select(s => s.Status).SingleAsync(Ct)
         );
-        Assert.Equal(StoryStatus.Complete, status);
-    }
 
     [Fact]
     public async Task CompleteStory_marks_failed_when_no_page_rendered()

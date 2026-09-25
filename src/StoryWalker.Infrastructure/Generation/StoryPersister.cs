@@ -41,11 +41,10 @@ public sealed class StoryPersister(StoryWalkerDbContext db)
     }
 
     /// <summary>
-    /// Settles the story once every page has been attempted. A story whose pages all failed to
-    /// render is <see cref="StoryStatus.Failed"/>; otherwise it is
-    /// <see cref="StoryStatus.Complete"/> even if individual pages failed, because a story with
-    /// five of six pictures is still readable — the per-page
-    /// <see cref="PageStatus"/> is what tells a client which illustration is missing.
+    /// Settles the story once rendering has finished or stopped. It is
+    /// <see cref="StoryStatus.Complete"/> only when every page is: a picture book with a missing
+    /// picture is not delivered (ADR-0026). A page that failed, or one never rendered because the
+    /// worker stopped at an earlier failure, makes it <see cref="StoryStatus.Failed"/>.
     /// </summary>
     public async Task CompleteStoryAsync(Guid storyId, CancellationToken ct = default)
     {
@@ -55,12 +54,13 @@ public sealed class StoryPersister(StoryWalkerDbContext db)
             return;
         }
 
-        var anyPageRendered = await db.Pages.AnyAsync(
-            p => p.StoryId == storyId && p.Status == PageStatus.Complete,
-            ct
-        );
+        var pages = db.Pages.Where(p => p.StoryId == storyId);
+        // No pages at all is not a success either: nothing was ever rendered.
+        var everyPageRendered =
+            await pages.AnyAsync(ct)
+            && !await pages.AnyAsync(p => p.Status != PageStatus.Complete, ct);
 
-        story.Status = anyPageRendered ? StoryStatus.Complete : StoryStatus.Failed;
+        story.Status = everyPageRendered ? StoryStatus.Complete : StoryStatus.Failed;
         await db.SaveChangesAsync(ct);
     }
 
