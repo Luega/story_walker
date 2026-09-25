@@ -54,7 +54,7 @@ from the committed template:
 cp apps/functions/local.settings.example.json apps/functions/local.settings.json
 ```
 
-then fill in the three `Foundry:*` values. Everything else already points at the services in
+then fill in the four `Foundry:*` values. Everything else already points at the services in
 `docker-compose.yml` and works as-is.
 
 `local.settings.json` is not the Functions counterpart of `appsettings.json`: it emulates the
@@ -71,6 +71,7 @@ as `docker-compose.yml` already does.
 | `ServiceBusConnection` | host | emulator string, as in the template | The `Connection` name on `[ServiceBusTrigger]` in `GenerateStory.cs`. The emulator key is a public placeholder, not a secret. |
 | `ConnectionStrings:Postgres` | `Program.cs` | compose's postgres | Under `Values`, **not** the top-level `ConnectionStrings` block: that block is SqlClient-specific and is not published to Azure. |
 | `Foundry:Endpoint` | `Program.cs` | **you fill in** | Your Foundry resource, e.g. `https://<name>.services.ai.azure.com`. Same endpoint as the API. |
+| `Foundry:Deployment` | `Program.cs` | **you fill in** | The **chat** deployment, the same one the API uses. The worker calls it only when the image model refuses a page's prompt on moderation grounds, to rewrite that prompt once ([ADR-0025](../../docs/adr/0025-rewrite-illustration-prompt-after-moderation.md)). |
 | `Foundry:ImageDeployment` | `Program.cs` | **you fill in** | A **second** deployment on that resource. The name alone picks the route: the four Black Forest Labs names (`FLUX.2-pro`, `FLUX.2-flex`, `FLUX.1-Kontext-pro`, `FLUX-1.1-pro`) go to the BFL provider route (`/providers/blackforestlabs/v1/…`), which is the only one Foundry serves for FLUX.2; **anything else** — `gpt-image-1`, `gpt-image-1-mini`, `dall-e-3` — goes to the Azure OpenAI images route (`/openai/deployments/{name}/images/generations`). A name that is neither, such as a typo, takes the OpenAI route and answers 404 on the first page. |
 | `Foundry:ApiKey` | `Program.cs` | optional | Leave empty to authenticate with your own `az login` (`DefaultAzureCredential`). In Azure, leave it empty and use a managed identity. **Secret** — never commit a real value. |
 | `Storage:ConnectionString` | `Program.cs` | `UseDevelopmentStorage=true` | Where page images go (ADR-0010). Same azurite account as `AzureWebJobsStorage`, different container. |

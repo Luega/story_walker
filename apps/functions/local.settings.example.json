@@ -8,6 +8,7 @@
     "ConnectionStrings:Postgres": "Host=localhost;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker",
 
     "Foundry:Endpoint": "",
+    "Foundry:Deployment": "",
     "Foundry:ImageDeployment": "",
     "Foundry:ApiKey": "",
 

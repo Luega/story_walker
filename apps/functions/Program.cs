@@ -33,6 +33,14 @@ var host = new HostBuilder()
                 config["Foundry:ApiKey"]
             );
 
+            // The chat deployment the API's agent uses. The worker calls it only to rewrite an
+            // illustration prompt the image model refused on moderation grounds (ADR-0025).
+            services.AddFoundryChatClient(
+                Required(config, "Foundry:Endpoint"),
+                Required(config, "Foundry:Deployment"),
+                config["Foundry:ApiKey"]
+            );
+
             services.AddImageStorage(
                 Required(config, "Storage:ConnectionString"),
                 config["Storage:Container"] ?? "story-images",
@@ -62,6 +70,9 @@ var host = new HostBuilder()
                             // Foundry image calls go through a plain HttpClient.
                             .AddSource("System.Net.Http")
                             .AddSource("Azure.*")
+                            // The gen_ai span of a prompt rewrite (AddFoundryChatClient), as in
+                            // the API.
+                            .AddSource("Experimental.Microsoft.Extensions.AI")
                             // Persisting pages and settling the status (StoryPersister,
                             // PageImageRenderer); parameterised SQL, no parameter values.
                             .AddNpgsql()

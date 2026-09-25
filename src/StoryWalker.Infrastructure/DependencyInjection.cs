@@ -59,7 +59,26 @@ public static class DependencyInjection
 
     /// <summary>
     /// Wires the <see cref="IStoryAgent"/> onto a Microsoft Foundry chat-model deployment
-    /// (ADR-0011), reached through the Azure OpenAI client.
+    /// (ADR-0011), through <see cref="AddFoundryChatClient"/>. The agent itself is scoped, because
+    /// it persists history through the (scoped) <see cref="StoryWalkerDbContext"/> (ADR-0018).
+    /// </summary>
+    public static IServiceCollection AddFoundryChat(
+        this IServiceCollection services,
+        string endpoint,
+        string deployment,
+        string? apiKey = null
+    )
+    {
+        services.AddFoundryChatClient(endpoint, deployment, apiKey);
+        services.AddScoped<IStoryAgent, StoryAgent>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers an <see cref="IChatClient"/> for a Microsoft Foundry chat-model deployment
+    /// (ADR-0011), reached through the Azure OpenAI client. The API's agent talks through it, and
+    /// so does the worker, which rewrites an illustration prompt the image model refused (ADR-0025).
     /// <para>
     /// Authentication follows <paramref name="apiKey"/>: when supplied, the deployment key is used
     /// directly — the simple path for a container, which has no signed-in user to borrow an identity
@@ -68,11 +87,9 @@ public static class DependencyInjection
     /// hosted in Azure. Identity is preferred where available, since it leaves no long-lived secret
     /// to store, rotate or leak.
     /// </para>
-    /// The <see cref="IChatClient"/> is built lazily, so nothing authenticates or connects until the
-    /// first conversation turn. The agent itself is scoped, because it persists history through the
-    /// (scoped) <see cref="StoryWalkerDbContext"/> (ADR-0018).
+    /// The client is built lazily, so nothing authenticates or connects until the first call.
     /// </summary>
-    public static IServiceCollection AddFoundryChat(
+    public static IServiceCollection AddFoundryChatClient(
         this IServiceCollection services,
         string endpoint,
         string deployment,
@@ -96,7 +113,6 @@ public static class DependencyInjection
                 .UseOpenTelemetry(configure: otel => otel.EnableSensitiveData = false)
                 .Build();
         });
-        services.AddScoped<IStoryAgent, StoryAgent>();
 
         return services;
     }

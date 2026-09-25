@@ -157,9 +157,10 @@ services:
       ServiceBusConnection: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       # The activities write pages and read the story, so the worker needs the database too.
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=storywalker;Username=storywalker;Password=storywalker"
-      # The Foundry image deployment (ADR-0011). Separate from the API's chat deployment: the two
-      # call different models on the same resource.
+      # The Foundry image deployment (ADR-0011), and the API's chat deployment, which the worker
+      # calls only to rewrite an illustration prompt the image model refused (ADR-0025).
       Foundry__Endpoint: "${FOUNDRY_ENDPOINT:-}"
+      Foundry__Deployment: "${FOUNDRY_DEPLOYMENT:-}"
       Foundry__ImageDeployment: "${FOUNDRY_IMAGE_DEPLOYMENT:-}"
       Foundry__ApiKey: "${FOUNDRY_API_KEY:-}"
       # Page images (ADR-0010). Same azurite account as the Functions runtime, different container.
