@@ -71,8 +71,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </div>
           </header>
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
-          {/* Footer link and consent banner; renders nothing without browser telemetry. */}
-          <CookieConsent />
+          <footer className="border-t border-border">
+            <div className="mx-auto flex max-w-6xl gap-6 px-4 py-4 text-sm text-muted sm:px-6">
+              <Link href="/privacy" className="hover:text-accent">
+                Privacy
+              </Link>
+              {/* Preferences link and consent banner; renders nothing without browser telemetry. */}
+              <CookieConsent />
+            </div>
+          </footer>
         </ClerkProvider>
       </body>
     </html>

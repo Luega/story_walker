@@ -1,7 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Next 16 renamed middleware.ts to proxy.ts; clerkMiddleware() is unchanged, only the filename is.
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+// The privacy page is public: a visitor has to be able to read it before signing up (ADR-0028).
+const isPublicRoute = createRouteMatcher(["/", "/privacy", "/sign-in(.*)", "/sign-up(.*)"]);
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) await auth.protect();

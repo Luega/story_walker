@@ -160,6 +160,16 @@ export function NewStoryModal({
         </p>
       )}
 
+      {/* Told before they type: conversations are kept, and not only the parent can see them
+          (ADR-0028). */}
+      <p className="border-b border-border px-5 py-2 text-xs text-muted">
+        Conversations are saved so you can pick them up later or create related stories. Our
+        technical staff may see them to help you. You can delete them at any time.{" "}
+        <Link href="/privacy" className="underline hover:text-foreground">
+          Privacy
+        </Link>
+      </p>
+
       <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>

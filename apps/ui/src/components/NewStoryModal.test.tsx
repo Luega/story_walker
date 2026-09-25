@@ -164,6 +164,16 @@ describe("the saved story settings", () => {
   });
 });
 
+// Conversations are kept, and our staff can see them: the parent is told before they type (ADR-0028).
+describe("the privacy notice", () => {
+  it("says the conversation is saved and who may see it, and links to the privacy page", () => {
+    renderModal();
+
+    expect(screen.getByText(/Conversations are saved/)).toHaveTextContent(/technical staff/);
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+  });
+});
+
 // Opened from the conversation history (ADR-0028).
 describe("an existing conversation", () => {
   function renderExisting(conversation = aConversation()) {

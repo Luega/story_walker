@@ -40,13 +40,10 @@ export function CookieConsent({
 
   return (
     <>
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-4 text-sm text-muted sm:px-6">
-          <button type="button" onClick={() => setReopened(true)} className="hover:text-accent">
-            Cookie preferences
-          </button>
-        </div>
-      </footer>
+      {/* Sits in the layout's footer, next to the privacy link. */}
+      <button type="button" onClick={() => setReopened(true)} className="hover:text-accent">
+        Cookie preferences
+      </button>
 
       {open && (
         <section
