@@ -85,7 +85,8 @@ public static class ConversationEndpoints
                                         )
                                         .Trim()
                                 ))
-                                .ToList()
+                                .ToList(),
+                            summary.LatestCompleteStoryId
                         )
                     );
                 }
@@ -169,6 +170,7 @@ public static class ConversationEndpoints
         public string? LatestStoryTitle { get; init; }
         public StoryStatus? LatestStoryStatus { get; init; }
         public string? FirstUserMessage { get; init; }
+        public Guid? LatestCompleteStoryId { get; init; }
         public DateTime LastActivityAt { get; init; }
     }
 
@@ -190,6 +192,13 @@ public static class ConversationEndpoints
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => (StoryStatus?)s.Status)
                     .FirstOrDefault(),
+                LatestCompleteStoryId = db
+                    .Stories.Where(s =>
+                        s.ConversationId == c.Id && s.Status == StoryStatus.Complete
+                    )
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Select(s => (Guid?)s.Id)
+                    .FirstOrDefault(),
                 FirstUserMessage = c
                     .Messages.Where(m => m.Role == MessageRole.User)
                     .OrderBy(m => m.Seq)
@@ -207,7 +216,8 @@ public static class ConversationEndpoints
             c.Status.ToString(),
             Resumable: c.Status == ConversationStatus.Active,
             StoryFailed: c.LatestStoryStatus == StoryStatus.Failed,
-            c.LastActivityAt
+            c.LastActivityAt,
+            c.LatestCompleteStoryId
         );
 
     /// <summary>

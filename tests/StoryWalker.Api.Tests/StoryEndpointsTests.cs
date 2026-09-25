@@ -183,6 +183,30 @@ public sealed class StoryEndpointsTests(StoryWalkerApiFactory factory)
         });
     }
 
+    // Deletes stay independent (ADR-0028, ADR-0029): a sequel outlives the story it was based on.
+    [Fact]
+    public async Task DeleteStory_keeps_the_stories_based_on_it_unlinked()
+    {
+        await _factory.ResetAsync();
+        var mineId = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_story_tests"));
+        var original = await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, mineId));
+        var sequel = await _factory.ExecuteDbAsync(async db =>
+        {
+            var id = await SeedData.SeedDemoStoryAsync(db, mineId);
+            (await db.Stories.SingleAsync(s => s.Id == id, Ct)).BasedOnStoryId = original;
+            await db.SaveChangesAsync(Ct);
+            return id;
+        });
+
+        var response = await _client.DeleteAsync($"/stories/{original}", Ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var basedOn = await _factory.ExecuteDbAsync(db =>
+            db.Stories.Where(s => s.Id == sequel).Select(s => s.BasedOnStoryId).SingleAsync(Ct)
+        );
+        Assert.Null(basedOn);
+    }
+
     [Fact]
     public async Task DeleteStory_unknown_id_returns_404()
     {

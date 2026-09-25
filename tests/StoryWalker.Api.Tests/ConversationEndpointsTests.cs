@@ -273,6 +273,32 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
         Assert.True(await _factory.ExecuteDbAsync(db => db.Conversations.AnyAsync(c => c.Id == theirs, Ct)));
     }
 
+    // What "New story based on this one" builds on (ADR-0029): the newest finished story, never a
+    // failed attempt that came after it.
+    [Fact]
+    public async Task Offers_the_most_recent_finished_story_to_build_on()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(me, ConversationStatus.Completed, messages: [(MessageRole.User, "hi")]);
+        await LinkStoryAsync(id, me, "First", StoryStatus.Complete);
+        var latestComplete = await LinkStoryAsync(id, me, "Second", StoryStatus.Complete);
+        await LinkStoryAsync(id, me, "Third", StoryStatus.Failed);
+
+        Assert.Equal(latestComplete, Assert.Single(await ListAsync()).LatestCompleteStoryId);
+        var detail = await _client.GetFromJsonAsync<ConversationDto>($"/stories/conversations/{id}", Ct);
+        Assert.Equal(latestComplete, detail!.LatestCompleteStoryId);
+    }
+
+    [Fact]
+    public async Task Offers_nothing_to_build_on_without_a_finished_story()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(me, ConversationStatus.Active, messages: [(MessageRole.User, "hi")]);
+        await LinkStoryAsync(id, me, "Gone wrong", StoryStatus.Failed);
+
+        Assert.Null(Assert.Single(await ListAsync()).LatestCompleteStoryId);
+    }
+
     private async Task<List<ConversationSummaryDto>> ListAsync()
     {
         var response = await _client.GetAsync("/stories/conversations", Ct);

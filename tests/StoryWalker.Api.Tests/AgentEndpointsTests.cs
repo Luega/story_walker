@@ -131,6 +131,40 @@ public sealed class AgentEndpointsTests(StoryWalkerApiFactory factory)
     }
 
     [Fact]
+    public async Task Starting_from_a_story_that_cannot_be_built_on_returns_404()
+    {
+        await _factory.ResetAsync();
+
+        var response = await _client.PostAsJsonAsync(
+            "/stories/conversations",
+            new AgentMessageRequest(ConversationId: null, Message: "a sequel", BasedOnStoryId: Guid.NewGuid()),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // The new story remembers the one it was based on (ADR-0029).
+    [Fact]
+    public async Task A_story_queued_from_a_conversation_based_on_another_records_it()
+    {
+        await _factory.ResetAsync();
+        var me = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_agent_tests"));
+        var original = await _factory.ExecuteDbAsync(db => SeedData.SeedDemoStoryAsync(db, me));
+
+        var response = await _client.PostAsJsonAsync(
+            "/stories/conversations",
+            new AgentMessageRequest(ConversationId: null, Message: FakeStoryAgent.ConfirmMessage, BasedOnStoryId: original),
+            Ct
+        );
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var queued = await response.Content.ReadFromJsonAsync<StoryQueuedResponse>(Ct);
+        var story = await _factory.ExecuteDbAsync(db => db.Stories.SingleAsync(s => s.Id == queued!.StoryId, Ct));
+        Assert.Equal(original, story.BasedOnStoryId);
+    }
+
+    [Fact]
     public async Task ContinueConversation_unknown_id_returns_404()
     {
         var response = await _client.PostAsJsonAsync(

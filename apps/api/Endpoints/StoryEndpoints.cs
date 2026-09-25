@@ -68,7 +68,8 @@ public static class StoryEndpoints
                             me,
                             request.ConversationId,
                             request.Message.Trim(),
-                            ct: ct
+                            request.BasedOnStoryId,
+                            ct
                         );
 
                         // Brief authored: persist the story (status=Generating) and enqueue the brief
@@ -101,6 +102,11 @@ public static class StoryEndpoints
                     }
                     catch (ConversationNotFoundException)
                     {
+                        return Results.NotFound();
+                    }
+                    catch (BasedOnStoryNotFoundException)
+                    {
+                        // Unknown, someone else's, or not finished: nothing to build on (ADR-0029).
                         return Results.NotFound();
                     }
                     catch (ContentFilteredException)
@@ -273,12 +279,20 @@ public static class StoryEndpoints
         CancellationToken ct
     )
     {
+        // The story the conversation was started from, if any, is what this one builds on
+        // (ADR-0029).
+        var basedOnStoryId = await db
+            .Conversations.Where(c => c.Id == conversationId)
+            .Select(c => c.BasedOnStoryId)
+            .FirstOrDefaultAsync(ct);
+
         var story = new Story
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             // Where a failure is reported back to, with the agent's advice (ADR-0027).
             ConversationId = conversationId,
+            BasedOnStoryId = basedOnStoryId,
             Title = brief.Title,
             TargetAge = brief.TargetAge,
             Status = StoryStatus.Generating,

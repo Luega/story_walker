@@ -11,13 +11,18 @@ namespace StoryWalker.Application.Api;
 /// <param name="Resumable">True while the conversation can still be continued (<c>Active</c>).</param>
 /// <param name="StoryFailed">True when the latest story queued from it failed (ADR-0027).</param>
 /// <param name="LastActivityAt">When its latest message was written.</param>
+/// <param name="LatestCompleteStoryId">
+/// The most recent finished story queued from it: what "New story based on this one" builds on
+/// (ADR-0029). Null when it has none.
+/// </param>
 public record ConversationSummaryDto(
     Guid Id,
     string Title,
     string Status,
     bool Resumable,
     bool StoryFailed,
-    DateTime LastActivityAt
+    DateTime LastActivityAt,
+    Guid? LatestCompleteStoryId = null
 );
 
 /// <summary>
@@ -30,7 +35,8 @@ public record ConversationDto(
     string Title,
     string Status,
     bool Resumable,
-    IReadOnlyList<ConversationMessageDto> Messages
+    IReadOnlyList<ConversationMessageDto> Messages,
+    Guid? LatestCompleteStoryId = null
 );
 
 /// <param name="Role"><c>user</c> or <c>assistant</c>.</param>

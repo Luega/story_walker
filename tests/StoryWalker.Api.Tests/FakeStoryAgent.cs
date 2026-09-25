@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StoryWalker.Application.Agent;
 using StoryWalker.Application.Brief;
@@ -79,8 +80,25 @@ internal sealed class FakeStoryAgent(IServiceScopeFactory scopes) : IStoryAgent
             id = Guid.NewGuid().ToString();
             await using var scope = scopes.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<StoryWalkerDbContext>();
+            // Same rule as the real agent: only the caller's own finished story (ADR-0029).
+            if (
+                basedOnStoryId is { } storyId
+                && !await db.Stories.AnyAsync(
+                    s => s.Id == storyId && s.UserId == userId && s.Status == StoryStatus.Complete,
+                    ct
+                )
+            )
+            {
+                throw new BasedOnStoryNotFoundException(storyId);
+            }
             db.Conversations.Add(
-                new Conversation { Id = Guid.Parse(id), UserId = userId, Status = ConversationStatus.Active }
+                new Conversation
+                {
+                    Id = Guid.Parse(id),
+                    UserId = userId,
+                    Status = ConversationStatus.Active,
+                    BasedOnStoryId = basedOnStoryId,
+                }
             );
             await db.SaveChangesAsync(ct);
         }

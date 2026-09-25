@@ -4,9 +4,14 @@ namespace StoryWalker.Application.Api;
 // provider-agnostic: the server issues it on the first turn and the client round-trips it.
 
 /// <param name="ConversationId">Continue an existing conversation; null to start a new one.</param>
+/// <param name="BasedOnStoryId">
+/// Start the new conversation from one of the caller's finished stories, for a related one
+/// (ADR-0029). Ignored when continuing a conversation.
+/// </param>
 public record AgentMessageRequest(
     string? ConversationId,
-    string Message);
+    string Message,
+    Guid? BasedOnStoryId = null);
 
 /// <param name="ConversationId">The conversation to continue on the next turn.</param>
 /// <param name="BriefReady">True when the agent has emitted a complete brief and generation can start.</param>
