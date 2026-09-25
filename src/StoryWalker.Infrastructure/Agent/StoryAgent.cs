@@ -72,7 +72,7 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         // Send the whole conversation so far; chat completions are stateless.
         var history = conversation
             .Messages.OrderBy(m => m.Seq)
-            .Select(m => new ChatMessage(ToChatRole(m.Role), m.Content))
+            .Select(m => new ChatMessage(ChatRoles.ToChatRole(m.Role), m.Content))
             .ToList();
 
         var response = await RefusalAwareAsync(
@@ -81,7 +81,7 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
 
         foreach (var reply in response.Messages)
         {
-            Append(conversation, ToMessageRole(reply.Role), reply.Text);
+            Append(conversation, ChatRoles.ToMessageRole(reply.Role), reply.Text);
         }
 
         var briefReady = response.Messages.Any(m =>
@@ -126,7 +126,7 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
             conversation
                 .Messages.Where(m => m.Role != MessageRole.System)
                 .OrderBy(m => m.Seq)
-                .Select(m => new ChatMessage(ToChatRole(m.Role), m.Content))
+                .Select(m => new ChatMessage(ChatRoles.ToChatRole(m.Role), m.Content))
         );
         messages.Add(
             new ChatMessage(ChatRole.User, "Output the generation brief for the confirmed plan.")
@@ -220,20 +220,4 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
                 .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, ct)
             ?? throw new ConversationNotFoundException(conversationId);
     }
-
-    private static ChatRole ToChatRole(MessageRole role) =>
-        role switch
-        {
-            MessageRole.System => ChatRole.System,
-            MessageRole.Assistant => ChatRole.Assistant,
-            _ => ChatRole.User,
-        };
-
-    private static MessageRole ToMessageRole(ChatRole role) =>
-        role.Value switch
-        {
-            "system" => MessageRole.System,
-            "assistant" => MessageRole.Assistant,
-            _ => MessageRole.User,
-        };
 }
