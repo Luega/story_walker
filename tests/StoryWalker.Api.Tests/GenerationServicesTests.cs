@@ -508,10 +508,82 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         Assert.Equal(StoryStatus.Failed, await StoryStatusAsync(storyId));
     }
 
+    // Report a failed story back to its linked conversation (ADR-0027). Page 1 is refused even after
+    // its rewrite, so the conversation should hear about page 1, as a safety refusal.
+    [Fact]
+    public async Task A_failed_story_is_reported_back_to_its_conversation()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        var conversationId = await LinkCompletedConversationAsync(storyId);
+        var images = new FakeImageGenerator { ThrowOnGenerate = ModerationBlocked() };
+
+        await _factory.ExecuteDbAsync(db => NewGenerator(db, images).GenerateAsync(storyId, Brief(), Ct));
+
+        var conversation = await _factory.ExecuteDbAsync(db =>
+            db.Conversations.Include(c => c.Messages).SingleAsync(c => c.Id == conversationId, Ct)
+        );
+        Assert.Equal(ConversationStatus.Active, conversation.Status);
+        var added = conversation.Messages.OrderBy(m => m.Seq).Skip(1).ToList();
+        Assert.Equal([MessageRole.System, MessageRole.Assistant], added.Select(m => m.Role).ToArray());
+        Assert.Contains("page 1", added[0].Content, StringComparison.Ordinal);
+        Assert.Contains("safety", added[0].Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task A_completed_story_leaves_its_conversation_alone()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        var conversationId = await LinkCompletedConversationAsync(storyId);
+
+        await _factory.ExecuteDbAsync(db =>
+            NewGenerator(db, new FakeImageGenerator()).GenerateAsync(storyId, Brief(), Ct)
+        );
+
+        var conversation = await _factory.ExecuteDbAsync(db =>
+            db.Conversations.Include(c => c.Messages).SingleAsync(c => c.Id == conversationId, Ct)
+        );
+        Assert.Equal(ConversationStatus.Completed, conversation.Status);
+        Assert.Single(conversation.Messages);
+    }
+
+    /// <summary>A Completed conversation with one message, linked to the seeded story.</summary>
+    private Task<Guid> LinkCompletedConversationAsync(Guid storyId) =>
+        _factory.ExecuteDbAsync(async db =>
+        {
+            var story = await db.Stories.SingleAsync(s => s.Id == storyId, Ct);
+            var conversation = new Conversation
+            {
+                Id = Guid.NewGuid(),
+                UserId = story.UserId,
+                Status = ConversationStatus.Completed,
+            };
+            db.Conversations.Add(conversation);
+            db.ConversationMessages.Add(
+                new ConversationMessage
+                {
+                    Id = Guid.NewGuid(),
+                    ConversationId = conversation.Id,
+                    Seq = 0,
+                    Role = MessageRole.System,
+                    Content = "Interview instructions",
+                }
+            );
+            story.ConversationId = conversation.Id;
+            await db.SaveChangesAsync(Ct);
+            return conversation.Id;
+        });
+
     private static StoryGenerator NewGenerator(StoryWalkerDbContext db, FakeImageGenerator images) =>
         new(
             new StoryPersister(db),
             NewRenderer(db, images, new InMemoryImageStore()),
+            new GenerationFailureRecorder(
+                db,
+                new RecordingChatClient { Reply = "Shall we put the scissors down on the table?" },
+                NullLogger<GenerationFailureRecorder>.Instance
+            ),
             NullLogger<StoryGenerator>.Instance
         );
 

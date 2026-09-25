@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using StoryWalker.Application.Agent;
 using StoryWalker.Application.Brief;
 
 namespace StoryWalker.Infrastructure.Generation;
@@ -11,6 +12,7 @@ namespace StoryWalker.Infrastructure.Generation;
 public sealed class StoryGenerator(
     StoryPersister persister,
     PageImageRenderer renderer,
+    GenerationFailureRecorder failureRecorder,
     ILogger<StoryGenerator> logger
 )
 {
@@ -21,31 +23,47 @@ public sealed class StoryGenerator(
         // Serial, not parallel: six concurrent calls against an image deployment on default quota
         // produce a 429 storm, and six sequential renders take about the "few minutes" the agent
         // already promised the user (ADR-0019).
+        (int PageNo, PageRenderOutcome Outcome)? stoppedAt = null;
         foreach (var page in brief.Pages.OrderBy(p => p.PageNo))
         {
-            var rendered = await renderer.RenderAsync(storyId, page.PageNo, ct) == PageRenderOutcome.Rendered;
+            var outcome = await renderer.RenderAsync(storyId, page.PageNo, ct);
             logger.LogInformation(
                 "Story {StoryId} page {PageNo}: {Outcome}.",
                 storyId,
                 page.PageNo,
-                rendered ? "image ready" : "no image"
+                outcome
             );
 
             // A failed page (already past its moderation rewrite, ADR-0025) fails the story, and a
             // failed story can only be deleted: stop rather than pay for pictures nobody will see
             // (ADR-0026). The remaining pages stay Pending, which settles the story Failed.
-            if (!rendered)
+            if (outcome != PageRenderOutcome.Rendered)
             {
                 logger.LogWarning(
                     "Story {StoryId} stopped at page {PageNo}; it will be settled Failed.",
                     storyId,
                     page.PageNo
                 );
+                stoppedAt = (page.PageNo, outcome);
                 break;
             }
         }
 
         await persister.CompleteStoryAsync(storyId, ct);
         logger.LogInformation("Settled final status for story {StoryId}.", storyId);
+
+        // Tell the conversation that queued the story, so the parent can pick it up from the
+        // confirmation with the agent's advice (ADR-0027).
+        if (stoppedAt is var (pageNo, failure))
+        {
+            await failureRecorder.RecordAsync(
+                storyId,
+                pageNo,
+                failure == PageRenderOutcome.Refused
+                    ? GenerationFailureReason.ImageRefused
+                    : GenerationFailureReason.TechnicalProblem,
+                ct
+            );
+        }
     }
 }
