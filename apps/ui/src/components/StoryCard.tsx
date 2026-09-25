@@ -14,8 +14,9 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
  * Both actions only report intent; the dashboard owns the API calls and the list.
  *
  * Only a Complete story links anywhere: the others have nothing to read yet, so the title is plain
- * text and the card drops the affordances that would suggest otherwise. Renaming and deleting stay
- * available throughout — a story you cannot open is still one you may want to tidy away.
+ * text and the card drops the affordances that would suggest otherwise. A story still generating
+ * can be renamed and deleted. A failed one can only be deleted (ADR-0026): a light red overlay
+ * marks it inactive, the rename action is gone, and delete, its only action, is always visible.
  */
 export function StoryCard({
   story,
@@ -73,18 +74,31 @@ export function StoryCard({
   }
 
   const readable = story.status === "Complete";
+  const failed = story.status === "Failed";
   const cardClassName = [
-    "group relative flex w-full flex-col gap-3 rounded-2xl border p-5 transition focus-within:border-accent",
-    story.status === "Failed" ? "border-red-400/40 bg-red-500/10" : "border-border bg-surface",
+    "group relative flex w-full flex-col gap-3 rounded-2xl border border-border bg-surface p-5 transition focus-within:border-accent",
     readable ? "hover:-translate-y-0.5 hover:border-accent hover:shadow-md" : "",
   ].join(" ");
+  // Dimmed under the overlay, so a failed card reads as inactive and not just as tinted.
+  const inactive = failed ? "opacity-60 grayscale" : "";
+  // Hover-revealed on wide screens, except when delete is the only thing the card still offers.
+  const actionVisibility = failed
+    ? "opacity-100"
+    : "opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100";
 
   return (
     <div className={cardClassName}>
+      {failed && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-2xl bg-red-500/15 ring-1 ring-inset ring-red-400/40"
+        />
+      )}
+
       <h2
         className={`pr-16 font-display text-xl font-semibold leading-snug ${
           readable ? "group-hover:text-accent" : "text-muted"
-        }`}
+        } ${inactive}`}
       >
         {editing ? (
           <input
@@ -111,33 +125,35 @@ export function StoryCard({
 
       {!editing && (
         <div className="absolute right-3 top-3 z-10 flex gap-1">
-          <button
-            type="button"
-            onClick={startEditing}
-            aria-label={`Rename “${story.title}”`}
-            title="Rename"
-            className="rounded-full p-2 text-muted opacity-100 transition hover:bg-background hover:text-accent focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden
+          {!failed && (
+            <button
+              type="button"
+              onClick={startEditing}
+              aria-label={`Rename “${story.title}”`}
+              title="Rename"
+              className={`rounded-full p-2 text-muted transition hover:bg-background hover:text-accent ${actionVisibility}`}
             >
-              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+                aria-hidden
+              >
+                <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+          )}
 
           <button
             type="button"
             onClick={() => onDelete(story)}
             aria-label={`Delete “${story.title}”`}
             title="Delete"
-            className="rounded-full p-2 text-muted opacity-100 transition hover:bg-red-100 hover:text-red-700 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+            className={`rounded-full p-2 text-muted transition hover:bg-red-100 hover:text-red-700 ${actionVisibility}`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -154,7 +170,7 @@ export function StoryCard({
         </div>
       )}
 
-      <div className="mt-auto flex items-center justify-between gap-2 text-sm text-muted">
+      <div className={`mt-auto flex items-center justify-between gap-2 text-sm text-muted ${inactive}`}>
         <time dateTime={story.createdAt}>{dateFormat.format(new Date(story.createdAt))}</time>
         <StatusBadge status={story.status} />
       </div>

@@ -35,6 +35,9 @@ const titleInput = () => screen.getByRole("textbox", { name: "Story title" });
 /** The card itself: the h2 sits directly inside it. */
 const cardOf = (title: string) => screen.getByRole("heading", { name: title }).parentElement;
 
+/** The overlay that marks a failed story inactive, if the card has one. */
+const overlayOf = (title: string) => cardOf(title)!.querySelector(":scope > .bg-red-500\\/15");
+
 describe("reading", () => {
   it("links to a story that is ready", () => {
     const { story } = renderCard({ title: "The Curious Moon", status: "Complete" });
@@ -57,16 +60,16 @@ describe("reading", () => {
     },
   );
 
-  it("tints a failed story red", () => {
+  it("covers a failed story with a light red overlay", () => {
     renderCard({ title: "Gone wrong", status: "Failed" });
 
-    expect(cardOf("Gone wrong")).toHaveClass("bg-red-500/10");
+    expect(overlayOf("Gone wrong")).not.toBeNull();
   });
 
-  it("leaves a story that can be read untinted", () => {
+  it("leaves a story that can be read uncovered", () => {
     renderCard({ title: "All well", status: "Complete" });
 
-    expect(cardOf("All well")).not.toHaveClass("bg-red-500/10");
+    expect(overlayOf("All well")).toBeNull();
   });
 
   it("names its actions after the story, so they are distinguishable in a list", () => {
@@ -84,6 +87,29 @@ describe("deleting", () => {
     await userEvent.click(screen.getByRole("button", { name: `Delete “${story.title}”` }));
 
     expect(onDelete).toHaveBeenCalledExactlyOnceWith(story);
+  });
+});
+
+// A failed story can only be deleted (ADR-0026).
+describe("a failed story", () => {
+  it("cannot be renamed", () => {
+    renderCard({ title: "Gone wrong", status: "Failed" });
+
+    expect(screen.queryByRole("button", { name: "Rename “Gone wrong”" })).not.toBeInTheDocument();
+  });
+
+  it("can still be deleted", async () => {
+    const { story, onDelete } = renderCard({ title: "Gone wrong", status: "Failed" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete “Gone wrong”" }));
+
+    expect(onDelete).toHaveBeenCalledExactlyOnceWith(story);
+  });
+
+  it("shows its delete action without waiting for a hover, since it is the only one", () => {
+    renderCard({ title: "Gone wrong", status: "Failed" });
+
+    expect(screen.getByRole("button", { name: "Delete “Gone wrong”" })).not.toHaveClass("sm:opacity-0");
   });
 });
 
