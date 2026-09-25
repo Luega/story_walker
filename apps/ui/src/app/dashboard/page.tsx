@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { deleteStory, listStories, renameStory, type StorySummary } from "@/lib/api";
 import { StoryCard } from "@/components/StoryCard";
 import { NewStoryModal } from "@/components/NewStoryModal";
+import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 const POLL_MS = 5000;
@@ -12,6 +13,9 @@ export default function DashboardPage() {
   const [stories, setStories] = useState<StorySummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // The conversation the chat opens on; null starts a new one (ADR-0028).
+  const [openConversationId, setOpenConversationId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<StorySummary | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [queuedId, setQueuedId] = useState<string | null>(null);
@@ -93,13 +97,25 @@ export default function DashboardPage() {
           <h1 className="font-display text-4xl font-semibold tracking-tight">Your stories</h1>
           <p className="mt-1 text-muted">Pick a story to read, or create a new one.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105"
-        >
-          + New story
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="rounded-xl border border-border px-5 py-3 font-semibold transition hover:border-accent hover:text-accent"
+          >
+            Conversations
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpenConversationId(null);
+              setModalOpen(true);
+            }}
+            className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105"
+          >
+            + New story
+          </button>
+        </div>
       </div>
 
       {showQueuedNotice && (
@@ -143,7 +159,25 @@ export default function DashboardPage() {
         </ul>
       )}
 
-      {modalOpen && <NewStoryModal onClose={() => setModalOpen(false)} onQueued={handleQueued} />}
+      {sidebarOpen && (
+        <ConversationSidebar
+          onClose={() => setSidebarOpen(false)}
+          onOpen={(id) => {
+            setSidebarOpen(false);
+            setOpenConversationId(id);
+            setModalOpen(true);
+          }}
+        />
+      )}
+
+      {modalOpen && (
+        <NewStoryModal
+          key={openConversationId ?? "new"}
+          conversationId={openConversationId ?? undefined}
+          onClose={() => setModalOpen(false)}
+          onQueued={handleQueued}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDeleteDialog

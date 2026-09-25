@@ -3,7 +3,7 @@ import { userEvent } from "vitest/browser";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { worker } from "@/test/handlers";
-import { aStorySummary } from "@/test/factories";
+import { aConversation, aConversationSummary, aStorySummary } from "@/test/factories";
 import DashboardPage from "./page";
 
 /** Serves the list and counts the requests, so polling behaviour is observable. */
@@ -49,6 +49,34 @@ describe("listing", () => {
     await userEvent.click(screen.getByRole("button", { name: "+ New story" }));
 
     expect(screen.getByRole("heading", { name: "New story" })).toBeInTheDocument();
+  });
+});
+
+// The conversation history (ADR-0028).
+describe("conversations", () => {
+  it("opens the history, then the chosen conversation in the chat", async () => {
+    serveStories();
+    const summary = aConversationSummary({ title: "George and the Paper Ears" });
+    const conversation = aConversation({
+      id: summary.id,
+      title: summary.title,
+      messages: [{ role: "assistant", text: "Shall we change the scene with the scissors?" }],
+    });
+    worker.use(
+      http.get("/api/stories/conversations", () => HttpResponse.json([summary])),
+      http.get(`/api/stories/conversations/${summary.id}`, () => HttpResponse.json(conversation)),
+    );
+    render(<DashboardPage />);
+    await screen.findByText(/No stories yet/);
+
+    await userEvent.click(screen.getByRole("button", { name: "Conversations" }));
+    await userEvent.click(await screen.findByRole("button", { name: "George and the Paper Ears" }));
+
+    expect(
+      await screen.findByText("Shall we change the scene with the scissors?"),
+    ).toBeInTheDocument();
+    // The history made way for the chat.
+    expect(screen.queryByRole("button", { name: "Close conversations" })).not.toBeInTheDocument();
   });
 });
 
