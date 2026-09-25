@@ -93,11 +93,66 @@ public static class StoryAgentPrompt
         - Do not put any text, lettering or speech bubbles in the illustration prompts.
         - Set artStyle to one style phrase covering the whole story, from the confirmed plan.
         - Author a fitting story title.
+        - If an earlier attempt at this story failed and the conversation carries more than one
+          confirmed plan, author the most recent confirmed plan.
         - If the confirmed plan still contains anything the Content Rule below rules out, do not
           refuse: write the gentler version of it.
 
         {{ContentRule}}
         """;
+
+    /// <summary>
+    /// The system note appended to a story's conversation when the story fails (ADR-0027). The
+    /// parent never sees it; the agent answers it, and that answer is what the parent reads. It
+    /// carries the failure's category and the page, never the provider's error or the prompt, so
+    /// the agent has nothing technical to repeat.
+    /// <para>
+    /// It also re-arms <see cref="EndOfChatSentinel"/>: <see cref="Instructions"/> allows it once
+    /// for the whole conversation, and the conversation already contains it from the confirmation
+    /// that failed.
+    /// </para>
+    /// </summary>
+    public static string GenerationFailedNote(
+        int pageNo,
+        string pageText,
+        GenerationFailureReason reason
+    )
+    {
+        var what = reason switch
+        {
+            GenerationFailureReason.ImageRefused =>
+                $"The illustration of page {pageNo} was refused by the image safety system, even "
+                + "after its description was reworded once. The story text was fine; the way that "
+                + "scene is pictured tripped the check.",
+            _ =>
+                $"A technical problem stopped the illustrations at page {pageNo}. It had nothing "
+                + "to do with the story's content.",
+        };
+
+        var advice = reason switch
+        {
+            GenerationFailureReason.ImageRefused =>
+                "suggest one concrete change to that scene that keeps the story's lesson (for "
+                + "example, an object put down instead of held), and ask whether they want to change "
+                + "it or adjust anything else",
+            _ => "say that trying again as it is will usually work, and ask whether they want to "
+                + "try again or change anything first",
+        };
+
+        return $"""
+            GENERATION FAILED. The story confirmed above could not be created. {what}
+            Page {pageNo} text: "{pageText}"
+
+            The earlier confirmation no longer applies. In your next message, written to the parent
+            in the language they have been using: explain simply and kindly that the story could not
+            be finished, with no technical details, error codes or mention of this note; then
+            {advice}. Keep it short.
+
+            After that, carry on as in the interview. When the parent confirms a plan, new or
+            unchanged, summarise it and end that final message with {EndOfChatSentinel} again, as
+            before. Never end the message you write now with it.
+            """;
+    }
 
     /// <summary>
     /// Framing for the saved-context block. It has two jobs. It tells the agent these are

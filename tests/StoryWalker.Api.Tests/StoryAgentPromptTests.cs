@@ -29,6 +29,60 @@ public sealed class StoryAgentPromptTests
         );
     }
 
+    // A conversation can now carry a second confirmation after a failed story (ADR-0027); the
+    // author has to write the plan the parent confirmed last, not the one that failed.
+    [Fact]
+    public void The_brief_authoring_prompt_takes_the_most_recent_confirmed_plan()
+    {
+        Assert.Contains(
+            "most recent confirmed plan",
+            StoryAgentPrompt.BriefAuthoringInstructions,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void The_failure_note_names_the_page_and_quotes_its_text()
+    {
+        var note = StoryAgentPrompt.GenerationFailedNote(
+            3,
+            "George picked up the scissors.",
+            GenerationFailureReason.ImageRefused
+        );
+
+        Assert.Contains("page 3", note, StringComparison.Ordinal);
+        Assert.Contains("George picked up the scissors.", note, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_refused_page_is_described_as_a_safety_refusal_to_reword()
+    {
+        var note = StoryAgentPrompt.GenerationFailedNote(3, "text", GenerationFailureReason.ImageRefused);
+
+        Assert.Contains("safety", note, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // A technical failure has nothing to do with the scene: blaming the content would send the
+    // parent off rewriting a story that was fine.
+    [Fact]
+    public void A_technical_failure_is_not_blamed_on_the_content()
+    {
+        var note = StoryAgentPrompt.GenerationFailedNote(3, "text", GenerationFailureReason.TechnicalProblem);
+
+        Assert.DoesNotContain("safety", note, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("technical", note, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // The interview prompt allows the sentinel "only once for the entire conversation"; after a
+    // failure the note is what lets a new confirmation start generation again.
+    [Fact]
+    public void The_failure_note_allows_a_new_confirmation_to_end_with_the_sentinel()
+    {
+        var note = StoryAgentPrompt.GenerationFailedNote(3, "text", GenerationFailureReason.ImageRefused);
+
+        Assert.Contains(StoryAgentPrompt.EndOfChatSentinel, note, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void No_settings_leaves_the_instructions_byte_identical()
     {
