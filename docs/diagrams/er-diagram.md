@@ -15,6 +15,7 @@ erDiagram
     USER      ||--o{ CHARACTER : owns
     USER      ||--o{ CONVERSATION : "plans with the agent"
     CONVERSATION |o--o{ STORY : "queued (conversation_id)"
+    STORY     |o--o{ CONVERSATION : "started from (based_on_story_id)"
     STORY     ||--o{ STORY : "reuses (based_on_story_id)"
     STORY     ||--o{ PAGE : contains
     PAGE      ||--o{ CHARACTER_PAGE : features
@@ -34,7 +35,7 @@ erDiagram
     STORY {
         uuid id PK
         uuid user_id FK
-        uuid based_on_story_id FK "nullable; story whose characters + art style this one reuses"
+        uuid based_on_story_id FK "nullable, SET NULL; the finished story this one was started from (ADR-0029)"
         uuid conversation_id FK "nullable; the conversation that queued it, where a failure is reported (ADR-0027)"
         string title
         text summary "from the brief"
@@ -49,6 +50,8 @@ erDiagram
         uuid id PK
         uuid user_id FK
         string status "Active | Completed; back to Active when its story fails (ADR-0027)"
+        string title "nullable; the user's own title, else computed (ADR-0028)"
+        uuid based_on_story_id FK "nullable, SET NULL; the story it was started from (ADR-0029)"
     }
 
     CHARACTER {

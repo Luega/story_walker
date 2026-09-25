@@ -61,8 +61,8 @@ an empty dashboard.
 | Method & route | Purpose | Responses |
 | --- | --- | --- |
 | `GET /health` | Liveness probe | `200` `"healthy"` |
-| `POST /stories/conversations` | One agent turn; omit `conversationId` to start | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation, `422` refused by the content filter (ADR-0024), `502` unusable brief |
-| `GET /stories/conversations` | The caller's conversation history, most recent activity first, with a computed title, `resumable` and `storyFailed` (ADR-0028) | `200` |
+| `POST /stories/conversations` | One agent turn; omit `conversationId` to start, and add `basedOnStoryId` to start from one of your finished stories (ADR-0029) | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation or a story you cannot build on, `422` refused by the content filter (ADR-0024), `502` unusable brief |
+| `GET /stories/conversations` | The caller's conversation history, most recent activity first, with a computed title, `resumable`, `storyFailed` and `latestCompleteStoryId` (what a related story builds on, ADR-0029) (ADR-0028) | `200` |
 | `GET /stories/conversations/{id}` | One conversation as the chat shows it: user and assistant messages only, sentinel stripped | `200`, `404` unknown or not yours |
 | `PATCH /stories/conversations/{id}` | Set the conversation's own title | `200` updated summary, `400` empty title, `404` unknown or not yours |
 | `DELETE /stories/conversations/{id}` | Delete a conversation (messages cascade; its stories are kept, unlinked) | `204`, `404` unknown or not yours |

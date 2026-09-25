@@ -4,6 +4,13 @@
 - **Date:** 2026-09-15
 - **Deciders:** Luca Martinelli
 
+> **Note (2026-09-25):** sequels and prequels are back in a narrow form
+> ([ADR-0029](0029-stories-based-on-a-previous-one.md)). A new story can start from a finished one,
+> in a fresh conversation seeded with the previous story's text and illustration prompts.
+> `Story.BasedOnStoryId` returns, with `SET NULL` instead of the old self-FK's `Restrict`. Every
+> story is still self-contained: characters are reused by copying their descriptions, not through
+> a `Character` table, embeddings or reference images, all of which stay removed.
+
 ## Context
 
 The data model was designed for a product considerably larger than the one we need to ship first:

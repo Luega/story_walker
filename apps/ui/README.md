@@ -10,7 +10,7 @@ creating stories, and the live story viewer (Azure SignalR).
 | Route           | What it does                                                                 |
 | --------------- | ---------------------------------------------------------------------------- |
 | `/`             | Public landing page: what Story Walker does, and a "Get started" link to sign-up. |
-| `/dashboard`    | Story list (`GET /stories`) and the "New story" modal that chats with the agent (`POST /stories/conversations`). When the agent authors the brief (202) the modal closes and the new story appears in the list. The "Conversations" button opens the history sidebar (`GET /stories/conversations`), where a conversation can be reopened in the modal, renamed or deleted (ADR-0028). |
+| `/dashboard`    | Story list (`GET /stories`) and the "New story" modal that chats with the agent (`POST /stories/conversations`). When the agent authors the brief (202) the modal closes and the new story appears in the list. The "Conversations" button opens the history sidebar (`GET /stories/conversations`), with an *In progress* and a *Completed* tab, where a conversation can be reopened in the modal, renamed or deleted (ADR-0028). A completed one offers "New story based on this one", which starts a fresh chat from its story (ADR-0029). |
 | `/privacy`      | Public, **draft** privacy page: what is kept, why, who may see it, how to delete it. Linked from the footer and the chat. To be reviewed before launch. |
 | `/stories/[id]` | Story viewer (`GET /stories/{id}`): two facing pages at a time, image above and text below. Polls while the story is generating. |
 
