@@ -14,6 +14,8 @@ erDiagram
     USER      ||--o{ STORY : owns
     USER      ||--o{ CHARACTER : owns
     USER      ||--o{ CONVERSATION : "plans with the agent"
+    USER      ||--o{ COMPLETED_GENERATION : "counted against the weekly limit"
+    STORY     |o--o| COMPLETED_GENERATION : "finished as (story_id, SET NULL)"
     CONVERSATION |o--o{ STORY : "queued (conversation_id)"
     STORY     |o--o{ CONVERSATION : "started from (based_on_story_id)"
     STORY     ||--o{ STORY : "reuses (based_on_story_id)"
@@ -44,6 +46,13 @@ erDiagram
         string palette "from the brief"
         vector embedding "pgvector; story summary — for discovery (ADR-0009)"
         timestamp created_at
+    }
+
+    COMPLETED_GENERATION {
+        uuid id PK
+        uuid user_id FK
+        uuid story_id FK "nullable, unique; null once the story is deleted (ADR-0030)"
+        timestamp completed_at "counted from Monday 00:00 UTC"
     }
 
     CONVERSATION {

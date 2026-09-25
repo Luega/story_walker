@@ -28,6 +28,10 @@ export default function PrivacyPage() {
             names, ages and descriptions of children.
           </li>
           <li>Your stories: their text and illustrations.</li>
+          <li>
+            A count of the stories you finished and when, to apply the weekly limit. It stays even
+            if you delete a story.
+          </li>
         </ul>
       </section>
 

@@ -61,7 +61,7 @@ an empty dashboard.
 | Method & route | Purpose | Responses |
 | --- | --- | --- |
 | `GET /health` | Liveness probe | `200` `"healthy"` |
-| `POST /stories/conversations` | One agent turn; omit `conversationId` to start, and add `basedOnStoryId` to start from one of your finished stories (ADR-0029) | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation or a story you cannot build on, `422` refused by the content filter (ADR-0024), `502` unusable brief |
+| `POST /stories/conversations` | One agent turn; omit `conversationId` to start, and add `basedOnStoryId` to start from one of your finished stories (ADR-0029) | `200` reply, `202` + `Location` once the brief is authored and enqueued, `400` empty message, `404` unknown conversation or a story you cannot build on, `422` refused by the content filter (ADR-0024), `429` weekly story limit reached, before the model is called (ADR-0030), `502` unusable brief |
 | `GET /stories/conversations` | The caller's conversation history, most recent activity first, with a computed title, `resumable`, `storyFailed` and `latestCompleteStoryId` (what a related story builds on, ADR-0029) (ADR-0028) | `200` |
 | `GET /stories/conversations/{id}` | One conversation as the chat shows it: user and assistant messages only, sentinel stripped | `200`, `404` unknown or not yours |
 | `PATCH /stories/conversations/{id}` | Set the conversation's own title | `200` updated summary, `400` empty title, `404` unknown or not yours |
@@ -72,6 +72,7 @@ an empty dashboard.
 | `DELETE /stories/{id}` | Delete a story (pages cascade) | `204`, `404` unknown or not yours |
 | `GET /me/settings` | The caller's standing story context (four free-text answers) | `200`; four nulls before anything is saved |
 | `PATCH /me/settings` | Replace all four answers; blank clears one | `200` stored values, `400` an answer over 600 characters |
+| `GET /me/quota` | Where the caller stands against the weekly story limit: `limit`, `used` (finished since Monday 00:00 UTC plus still generating), `remaining`, `resetsAt` (ADR-0030) | `200` |
 
 Every `/stories` and `/me` route answers `401` without a valid token.
 
