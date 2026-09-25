@@ -61,6 +61,25 @@ public sealed class StoryPersister(StoryWalkerDbContext db)
             && !await pages.AnyAsync(p => p.Status != PageStatus.Complete, ct);
 
         story.Status = everyPageRendered ? StoryStatus.Complete : StoryStatus.Failed;
+
+        // A finished story counts against the weekly limit (ADR-0030). Once only: a redelivered
+        // message settles the same story again, and the ledger's unique StoryId backs this up.
+        if (
+            story.Status == StoryStatus.Complete
+            && !await db.CompletedGenerations.AnyAsync(g => g.StoryId == storyId, ct)
+        )
+        {
+            db.CompletedGenerations.Add(
+                new CompletedGeneration
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = story.UserId,
+                    StoryId = storyId,
+                    CompletedAt = DateTime.UtcNow,
+                }
+            );
+        }
+
         await db.SaveChangesAsync(ct);
     }
 

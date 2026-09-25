@@ -421,6 +421,53 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         Assert.Equal(StoryStatus.Complete, await StoryStatusAsync(storyId));
     }
 
+    // The weekly limit counts finished stories from the ledger (ADR-0030).
+    [Fact]
+    public async Task A_finished_story_is_entered_in_the_ledger_once()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            var renderer = NewRenderer(db, new FakeImageGenerator(), new InMemoryImageStore());
+            for (var pageNo = 1; pageNo <= GenerationBriefValidator.PageCount; pageNo++)
+            {
+                await renderer.RenderAsync(storyId, pageNo, Ct);
+            }
+            // Twice, as a redelivered message would.
+            await new StoryPersister(db).CompleteStoryAsync(storyId, Ct);
+            await new StoryPersister(db).CompleteStoryAsync(storyId, Ct);
+        });
+
+        var entries = await _factory.ExecuteDbAsync(db =>
+            db.CompletedGenerations.Where(g => g.StoryId == storyId).ToListAsync(Ct)
+        );
+        var entry = Assert.Single(entries);
+        var owner = await _factory.ExecuteDbAsync(db =>
+            db.Stories.Where(s => s.Id == storyId).Select(s => s.UserId).SingleAsync(Ct)
+        );
+        Assert.Equal(owner, entry.UserId);
+        Assert.True(DateTime.UtcNow - entry.CompletedAt < TimeSpan.FromMinutes(1));
+    }
+
+    // Only finished stories count: a failed one costs the user nothing.
+    [Fact]
+    public async Task A_failed_story_stays_out_of_the_ledger()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            await new StoryPersister(db).CompleteStoryAsync(storyId, Ct);
+        });
+
+        Assert.False(await _factory.ExecuteDbAsync(db => db.CompletedGenerations.AnyAsync(Ct)));
+    }
+
     // A picture book with a missing picture is not delivered (ADR-0026): five good pages are not
     // enough.
     [Fact]
