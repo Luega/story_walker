@@ -113,6 +113,7 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok("healthy"));
 app.MapStoryEndpoints();
+app.MapConversationEndpoints();
 app.MapUserEndpoints();
 
 app.Run();
