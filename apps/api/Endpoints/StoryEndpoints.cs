@@ -8,6 +8,7 @@ using StoryWalker.Application.Messaging;
 using StoryWalker.Domain.Entities;
 using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Persistence;
+using StoryWalker.Infrastructure.Quota;
 
 namespace StoryWalker.Api.Endpoints;
 
@@ -41,6 +42,7 @@ public static class StoryEndpoints
                     IStoryAgent agent,
                     StoryWalkerDbContext db,
                     IBriefPublisher publisher,
+                    StoryQuotaService quotas,
                     CurrentUser currentUser,
                     CancellationToken ct
                 ) =>
@@ -63,6 +65,18 @@ public static class StoryEndpoints
                         // Resolved on every turn, not just the brief-ready one: an interview that
                         // never finishes must still provision the user (Task 2/ADR-0002).
                         var me = await currentUser.GetIdAsync(ct);
+
+                        // At the weekly limit, stop before the model is called: planning a story
+                        // that cannot be generated only spends tokens (ADR-0030).
+                        var quota = await quotas.GetAsync(me, ct);
+                        if (quota.Remaining == 0)
+                        {
+                            return Results.Problem(
+                                detail: $"You've reached this week's limit of {quota.Limit} stories. You can create more from Monday.",
+                                statusCode: StatusCodes.Status429TooManyRequests,
+                                extensions: new Dictionary<string, object?> { ["resetsAt"] = quota.ResetsAt }
+                            );
+                        }
 
                         var turn = await agent.SendAsync(
                             me,

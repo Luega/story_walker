@@ -2,12 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using StoryWalker.Api.Auth;
 using StoryWalker.Application.Api;
 using StoryWalker.Infrastructure.Persistence;
+using StoryWalker.Infrastructure.Quota;
 
 namespace StoryWalker.Api.Endpoints;
 
 /// <summary>
-/// Endpoints for the signed-in user's own record. Today that is the standing story context they
-/// save once and the agent reads at the start of every new conversation.
+/// Endpoints for the signed-in user's own record: the standing story context they save once and
+/// the agent reads at the start of every new conversation, and where they stand against the weekly
+/// story limit (ADR-0030).
 /// <para>
 /// Nothing here filters by owner, because there is no id to filter on: <see cref="CurrentUser"/>
 /// <em>is</em> the scope, and it resolves the row from the token's subject (provisioning it on
@@ -42,6 +44,13 @@ public static class UserEndpoints
                 }
             )
             .WithName("GetUserSettings");
+
+        me.MapGet(
+                "/quota",
+                async (StoryQuotaService quota, CurrentUser currentUser, CancellationToken ct) =>
+                    Results.Ok(await quota.GetAsync(await currentUser.GetIdAsync(ct), ct))
+            )
+            .WithName("GetQuota");
 
         me.MapPatch(
                 "/settings",
