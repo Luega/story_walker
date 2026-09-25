@@ -24,17 +24,25 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         Guid userId,
         string? conversationId,
         string message,
+        Guid? basedOnStoryId = null,
         CancellationToken ct = default
     )
     {
         Conversation conversation;
         if (string.IsNullOrEmpty(conversationId))
         {
+            // Checked before anything is added, so a bad starting point saves nothing.
+            var previousStory = basedOnStoryId is { } storyId
+                ? await PreviousStoryAsync(userId, storyId, ct)
+                    ?? throw new BasedOnStoryNotFoundException(storyId)
+                : null;
+
             conversation = new Conversation
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 Status = ConversationStatus.Active,
+                BasedOnStoryId = basedOnStoryId,
             };
             db.Conversations.Add(conversation);
 
@@ -52,7 +60,13 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
                 ))
                 .FirstOrDefaultAsync(ct);
 
-            Append(conversation, MessageRole.System, StoryAgentPrompt.Compose(settings));
+            // A related story (ADR-0029) also starts from the one it builds on.
+            var system = StoryAgentPrompt.Compose(settings);
+            if (previousStory is not null)
+            {
+                system += "\n\n" + previousStory;
+            }
+            Append(conversation, MessageRole.System, system);
         }
         else
         {
@@ -122,6 +136,17 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         {
             new(ChatRole.System, StoryAgentPrompt.BriefAuthoringInstructions),
         };
+
+        // The system messages below are dropped, and with them the previous story a related one
+        // builds on; without it the author would not know the characters it has to keep
+        // (ADR-0029). Rebuilt from the story, which is gone only if it was deleted meanwhile.
+        if (
+            conversation.BasedOnStoryId is { } basedOn
+            && await PreviousStoryAsync(conversation.UserId, basedOn, ct) is { } previousStory
+        )
+        {
+            messages.Add(new ChatMessage(ChatRole.System, previousStory));
+        }
         messages.AddRange(
             conversation
                 .Messages.Where(m => m.Role != MessageRole.System)
@@ -179,6 +204,32 @@ public sealed class StoryAgent(StoryWalkerDbContext db, IChatClient chatClient) 
         return response.FinishReason == ChatFinishReason.ContentFilter
             ? throw new ContentFilteredException()
             : response;
+    }
+
+    /// <summary>
+    /// The previous-story block for one of the user's <c>Complete</c> stories, or null when there is
+    /// no such story: unknown, someone else's, or not finished (ADR-0029).
+    /// </summary>
+    private async Task<string?> PreviousStoryAsync(Guid userId, Guid storyId, CancellationToken ct)
+    {
+        var story = await db
+            .Stories.Where(s =>
+                s.Id == storyId && s.UserId == userId && s.Status == StoryStatus.Complete
+            )
+            .Select(s => new
+            {
+                s.Title,
+                s.TargetAge,
+                s.ArtStyle,
+                Pages = s
+                    .Pages.Select(p => new PreviousStoryPage(p.PageNo, p.Content, p.IllustrationPrompt))
+                    .ToList(),
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return story is null
+            ? null
+            : StoryAgentPrompt.PreviousStory(story.Title, story.TargetAge, story.ArtStyle, story.Pages);
     }
 
     /// <summary>

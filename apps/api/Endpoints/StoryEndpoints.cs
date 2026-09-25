@@ -68,7 +68,7 @@ public static class StoryEndpoints
                             me,
                             request.ConversationId,
                             request.Message.Trim(),
-                            ct
+                            ct: ct
                         );
 
                         // Brief authored: persist the story (status=Generating) and enqueue the brief

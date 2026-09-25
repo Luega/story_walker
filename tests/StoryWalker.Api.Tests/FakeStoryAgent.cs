@@ -55,6 +55,7 @@ internal sealed class FakeStoryAgent(IServiceScopeFactory scopes) : IStoryAgent
         Guid userId,
         string? conversationId,
         string message,
+        Guid? basedOnStoryId = null,
         CancellationToken ct = default
     )
     {

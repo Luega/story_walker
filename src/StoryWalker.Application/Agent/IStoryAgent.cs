@@ -14,11 +14,18 @@ public interface IStoryAgent
     /// as <c>null</c> to start a new conversation (the returned id continues it on later turns).
     /// A conversation belonging to another <paramref name="userId"/> is indistinguishable from one
     /// that does not exist: both raise <see cref="ConversationNotFoundException"/>.
+    /// <para>
+    /// <paramref name="basedOnStoryId"/> starts a new conversation from a previous story, for a
+    /// sequel, a prequel or another related story (ADR-0029). It must be one of the user's
+    /// <c>Complete</c> stories, or it raises <see cref="BasedOnStoryNotFoundException"/>. It is
+    /// ignored when continuing a conversation, which already knows what it was based on.
+    /// </para>
     /// </summary>
     Task<AgentTurnResult> SendAsync(
         Guid userId,
         string? conversationId,
         string message,
+        Guid? basedOnStoryId = null,
         CancellationToken ct = default
     );
 }
