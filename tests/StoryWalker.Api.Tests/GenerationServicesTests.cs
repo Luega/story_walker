@@ -469,6 +469,51 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         Assert.Equal(StoryStatus.Failed, await StoryStatusAsync(storyId));
     }
 
+    [Fact]
+    public async Task Generate_renders_every_page_and_completes_the_story()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        var images = new FakeImageGenerator();
+
+        await _factory.ExecuteDbAsync(db => NewGenerator(db, images).GenerateAsync(storyId, Brief(), Ct));
+
+        Assert.Equal(GenerationBriefValidator.PageCount, images.CallCount);
+        Assert.Equal(StoryStatus.Complete, await StoryStatusAsync(storyId));
+    }
+
+    // Once a page has failed, even after its rewrite (ADR-0025), the story is Failed whatever
+    // happens next, and a failed story can only be deleted: the pages after it would be paid for
+    // and never seen (ADR-0026).
+    [Fact]
+    public async Task Generate_stops_at_the_first_failed_page_and_fails_the_story()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        // Refuses everything, the rewrite included, so page 1 fails.
+        var images = new FakeImageGenerator { ThrowOnGenerate = ModerationBlocked() };
+
+        await _factory.ExecuteDbAsync(db => NewGenerator(db, images).GenerateAsync(storyId, Brief(), Ct));
+
+        // Page 1's original prompt and its rewrite; nothing for pages 2 to 6.
+        Assert.Equal(2, images.CallCount);
+        var statuses = await _factory.ExecuteDbAsync(db =>
+            db.Pages.Where(p => p.StoryId == storyId).OrderBy(p => p.PageNo).Select(p => p.Status).ToListAsync(Ct)
+        );
+        Assert.Equal(
+            [PageStatus.Failed, PageStatus.Pending, PageStatus.Pending, PageStatus.Pending, PageStatus.Pending, PageStatus.Pending],
+            statuses
+        );
+        Assert.Equal(StoryStatus.Failed, await StoryStatusAsync(storyId));
+    }
+
+    private static StoryGenerator NewGenerator(StoryWalkerDbContext db, FakeImageGenerator images) =>
+        new(
+            new StoryPersister(db),
+            NewRenderer(db, images, new InMemoryImageStore()),
+            NullLogger<StoryGenerator>.Instance
+        );
+
     private Task<StoryStatus> StoryStatusAsync(Guid storyId) =>
         _factory.ExecuteDbAsync(db =>
             db.Stories.Where(s => s.Id == storyId).Select(s => s.Status).SingleAsync(Ct)

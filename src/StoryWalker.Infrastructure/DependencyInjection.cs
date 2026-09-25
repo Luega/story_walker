@@ -198,6 +198,7 @@ public static class DependencyInjection
         services.AddScoped<StoryPersister>();
         services.AddScoped<IllustrationPromptRewriter>();
         services.AddScoped<PageImageRenderer>();
+        services.AddScoped<StoryGenerator>();
 
         return services;
     }

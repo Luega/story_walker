@@ -23,8 +23,7 @@ namespace StoryWalker.Functions.Functions;
 /// </para>
 /// </summary>
 public sealed class GenerateStory(
-    StoryPersister persister,
-    PageImageRenderer renderer,
+    StoryGenerator generator,
     ILogger<GenerateStory> logger
 )
 {
@@ -48,23 +47,6 @@ public sealed class GenerateStory(
             brief.Pages.Count
         );
 
-        await persister.PersistPagesAsync(storyId, brief, ct);
-
-        // Serial, not parallel: six concurrent calls against an image deployment on default quota
-        // produce a 429 storm, and six sequential renders take about the "few minutes" the agent
-        // already promised the user (ADR-0019).
-        foreach (var page in brief.Pages.OrderBy(p => p.PageNo))
-        {
-            var rendered = await renderer.RenderAsync(storyId, page.PageNo, ct);
-            logger.LogInformation(
-                "Story {StoryId} page {PageNo}: {Outcome}.",
-                storyId,
-                page.PageNo,
-                rendered ? "image ready" : "no image"
-            );
-        }
-
-        await persister.CompleteStoryAsync(storyId, ct);
-        logger.LogInformation("Settled final status for story {StoryId}.", storyId);
+        await generator.GenerateAsync(storyId, brief, ct);
     }
 }
