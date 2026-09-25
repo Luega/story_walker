@@ -19,3 +19,19 @@ public record ConversationSummaryDto(
     bool StoryFailed,
     DateTime LastActivityAt
 );
+
+/// <summary>
+/// A conversation as the chat modal shows it: only what the parent and the agent said. System
+/// messages (instructions, saved context, failure notes) are left out, and the end-of-chat
+/// sentinel is stripped from the agent's messages (ADR-0027, ADR-0028).
+/// </summary>
+public record ConversationDto(
+    Guid Id,
+    string Title,
+    string Status,
+    bool Resumable,
+    IReadOnlyList<ConversationMessageDto> Messages
+);
+
+/// <param name="Role"><c>user</c> or <c>assistant</c>.</param>
+public record ConversationMessageDto(string Role, string Text);

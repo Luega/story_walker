@@ -108,6 +108,77 @@ public sealed class ConversationEndpointsTests(StoryWalkerApiFactory factory)
         Assert.Empty(await ListAsync());
     }
 
+    [Fact]
+    public async Task Detail_shows_only_what_the_parent_and_the_agent_said()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(
+            me,
+            ConversationStatus.Active,
+            messages:
+            [
+                (MessageRole.System, "instructions and saved context"),
+                (MessageRole.User, "A story about a fox"),
+                (MessageRole.Assistant, "How old is the child?"),
+                (MessageRole.System, "GENERATION FAILED. ..."),
+                (MessageRole.Assistant, "The picture could not be made. Shall we change the scene?"),
+            ]
+        );
+
+        var conversation = await _client.GetFromJsonAsync<ConversationDto>($"/stories/conversations/{id}", Ct);
+
+        Assert.NotNull(conversation);
+        Assert.Equal(
+            [
+                new ConversationMessageDto("user", "A story about a fox"),
+                new ConversationMessageDto("assistant", "How old is the child?"),
+                new ConversationMessageDto("assistant", "The picture could not be made. Shall we change the scene?"),
+            ],
+            conversation.Messages
+        );
+        Assert.True(conversation.Resumable);
+        Assert.Equal("A story about a fox", conversation.Title);
+    }
+
+    // The sentinel is plumbing between the agent and the API; it has no business on screen.
+    [Fact]
+    public async Task Detail_strips_the_end_of_chat_sentinel()
+    {
+        var me = await ResetAndSeedMeAsync();
+        var id = await SeedConversationAsync(
+            me,
+            ConversationStatus.Completed,
+            messages: [(MessageRole.User, "yes"), (MessageRole.Assistant, $"Generating now. {StoryAgentPrompt.EndOfChatSentinel}")]
+        );
+
+        var conversation = await _client.GetFromJsonAsync<ConversationDto>($"/stories/conversations/{id}", Ct);
+
+        Assert.Equal("Generating now.", conversation!.Messages[^1].Text);
+        Assert.False(conversation.Resumable);
+    }
+
+    [Fact]
+    public async Task Detail_of_another_users_conversation_is_404()
+    {
+        await ResetAndSeedMeAsync();
+        var stranger = await _factory.ExecuteDbAsync(db => SeedData.SeedUserAsync(db, "user_conversation_stranger"));
+        var theirs = await SeedConversationAsync(stranger, ConversationStatus.Active, messages: [(MessageRole.User, "not yours")]);
+
+        var response = await _client.GetAsync($"/stories/conversations/{theirs}", Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Detail_of_an_unknown_conversation_is_404()
+    {
+        await ResetAndSeedMeAsync();
+
+        var response = await _client.GetAsync($"/stories/conversations/{Guid.NewGuid()}", Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private async Task<List<ConversationSummaryDto>> ListAsync()
     {
         var response = await _client.GetAsync("/stories/conversations", Ct);
