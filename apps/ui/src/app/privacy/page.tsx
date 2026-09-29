@@ -7,10 +7,10 @@ import Link from "next/link";
  */
 export default function PrivacyPage() {
   return (
-    <article className="mx-auto max-w-2xl space-y-6 leading-relaxed">
+    <article className="card mx-auto max-w-2xl space-y-6 px-6 py-8 leading-relaxed sm:px-10 sm:py-10">
       <header>
         <h1 className="font-display text-4xl font-semibold tracking-tight">Privacy</h1>
-        <p className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900">
+        <p className="mt-3 rounded-2xl bg-sun-soft px-4 py-2 text-sm font-semibold">
           Draft: this page is still being reviewed.
         </p>
       </header>

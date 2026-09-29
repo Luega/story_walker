@@ -42,6 +42,9 @@ const QUESTIONS: { field: Field; label: string; hint: string; placeholder: strin
 
 const EMPTY: UserSettings = { kids: null, story: null, characters: null, artStyle: null };
 
+// One playful colour per question, so the four read as separate cards rather than one long form.
+const DOTS = ["bg-sun", "bg-sky", "bg-mint", "bg-lilac"];
+
 export default function SettingsPage() {
   const [values, setValues] = useState<UserSettings>(EMPTY);
   const [loaded, setLoaded] = useState(false);
@@ -114,22 +117,26 @@ export default function SettingsPage() {
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-100 px-4 py-3 text-red-800">
+        <p role="alert" className="rounded-3xl bg-danger-soft px-5 py-3 font-semibold text-danger">
           {error}
         </p>
       )}
 
       <div className="space-y-4">
-        {QUESTIONS.map(({ field, label, hint, placeholder }) => {
+        {QUESTIONS.map(({ field, label, hint, placeholder }, i) => {
           const value = values[field] ?? "";
           const over = value.trim().length > MAX;
 
           return (
-            <div key={field} className="rounded-2xl border border-border bg-surface p-5">
+            <div key={field} className="card p-6">
               <label
                 htmlFor={field}
-                className="font-display text-2xl font-semibold tracking-tight"
+                className="flex items-center gap-3 font-display text-2xl font-semibold tracking-tight"
               >
+                <span
+                  aria-hidden
+                  className={`size-4 shrink-0 rounded-full ${DOTS[i % DOTS.length]}`}
+                />
                 {label}
               </label>
               <p className="mt-1 mb-3 text-sm text-muted">{hint}</p>
@@ -140,9 +147,9 @@ export default function SettingsPage() {
                 disabled={!loaded || saving}
                 rows={4}
                 placeholder={placeholder}
-                className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 outline-none focus:border-accent disabled:opacity-60"
+                className="field resize-y"
               />
-              <p className={`mt-1 text-right text-xs ${over ? "text-red-700" : "text-muted"}`}>
+              <p className={`mt-1 text-right text-xs ${over ? "font-bold text-danger" : "text-muted"}`}>
                 {value.trim().length}/{MAX}
               </p>
             </div>
@@ -154,12 +161,12 @@ export default function SettingsPage() {
         <button
           type="submit"
           disabled={!loaded || saving || tooLong}
-          className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 disabled:opacity-50"
+          className="btn-primary px-6 py-3"
         >
           {saving ? "Saving…" : "Save"}
         </button>
         {saved && (
-          <p role="status" className="text-muted">
+          <p role="status" className="rounded-full bg-mint-soft px-4 py-2 font-semibold">
             Saved. New stories will use this.
           </p>
         )}

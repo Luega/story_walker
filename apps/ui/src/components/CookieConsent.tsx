@@ -48,7 +48,7 @@ export function CookieConsent({
       {open && (
         <section
           aria-labelledby="cookie-consent-heading"
-          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-5 text-foreground shadow-2xl"
+          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-2xl rounded-[2rem] border-2 border-border bg-surface p-6 text-foreground shadow-2xl"
         >
           <h2 id="cookie-consent-heading" className="font-display text-lg font-semibold">
             Analytics cookies
@@ -62,14 +62,14 @@ export function CookieConsent({
             <button
               type="button"
               onClick={() => choose("rejected")}
-              className="rounded-xl border border-border px-4 py-2 font-semibold hover:border-accent"
+              className="btn-secondary"
             >
               Reject
             </button>
             <button
               type="button"
               onClick={() => choose("accepted")}
-              className="rounded-xl border border-border px-4 py-2 font-semibold hover:border-accent"
+              className="btn-secondary"
             >
               Accept
             </button>
