@@ -250,15 +250,16 @@ describe("reading on a phone", () => {
     expect(screen.getByText("Content of page 1")).toBeInTheDocument();
   });
 
-  it("gets out of the way while reading and comes back on a tap", async () => {
+  it("keeps the controls in view while reading", async () => {
     serveStory({ pages: sixPages });
     render(<StoryPage />);
     await screen.findByText("Content of page 1");
-    const controls = screen.getByRole("navigation", { name: "Reader controls" });
 
-    await vi.waitFor(() => expect(controls).toHaveAttribute("inert"), { timeout: 6000 });
-
+    // A tap on the page is not a page turn, and nothing hides the buttons afterwards.
     await swipe(0);
-    expect(controls).not.toHaveAttribute("inert");
+    await new Promise((resolve) => setTimeout(resolve, 3500));
+
+    expect(screen.getByText("Content of page 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next page" })).toBeVisible();
   });
 });

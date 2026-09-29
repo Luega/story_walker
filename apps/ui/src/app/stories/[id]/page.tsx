@@ -10,8 +10,6 @@ import { useReaderLayout } from "@/lib/useReaderLayout";
 
 /** How far a finger has to travel before it counts as turning the page rather than a tap. */
 const SWIPE_PX = 60;
-/** How long the controls linger over the artwork before fading away. */
-const CONTROLS_IDLE_MS = 3000;
 
 type LoadState =
   | { kind: "loading" }
@@ -25,15 +23,15 @@ type LoadState =
  * explained. The status is settled once and for all by the time it reaches Complete, so there is
  * nothing on this page left to poll for.
  *
- * Below desktop the reader takes over the screen: the pages are the whole page, and the controls
- * float over them in the same frosted glass as the story text, then get out of the way.
+ * Below desktop the reader takes over the screen and keeps to the essentials (ADR-0033): a way
+ * back, the title, one page, and two big buttons to turn it. They stay put, so a child always
+ * knows how to get to the next page.
  */
 export default function StoryPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [firstPage, setFirstPage] = useState(0);
-  const [controlsShown, setControlsShown] = useState(true);
   const { pagesPerView, immersive: fullScreen } = useReaderLayout();
 
   useEffect(() => {
@@ -77,7 +75,6 @@ export default function StoryPage() {
 
   function turn(direction: -1 | 1) {
     setFirstPage(Math.max(0, Math.min(start + direction * pagesPerView, last)));
-    setControlsShown(true);
   }
 
   useEffect(() => {
@@ -91,15 +88,7 @@ export default function StoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start, pagesPerView, last, atStart, atEnd]);
 
-  // Reading is the point, so the controls step back once the page has settled. Any tap brings them
-  // round again.
-  useEffect(() => {
-    if (!immersive || !controlsShown) return;
-    const timer = setTimeout(() => setControlsShown(false), CONTROLS_IDLE_MS);
-    return () => clearTimeout(timer);
-  }, [immersive, controlsShown, start]);
-
-  // Turning a page by hand: a flick either way turns it, anything shorter is a tap on the paper.
+  // Turning a page by hand: a flick either way turns it, anything shorter is just a tap.
   const swipeFrom = useRef<number | null>(null);
   const onControls = (e: React.PointerEvent) =>
     e.target instanceof Element && e.target.closest("[data-reader-controls]") !== null;
@@ -114,13 +103,8 @@ export default function StoryPage() {
     if (from === null || onControls(e)) return;
 
     const travelled = e.clientX - from;
-    if (travelled <= -SWIPE_PX) {
-      if (!atEnd) turn(1);
-    } else if (travelled >= SWIPE_PX) {
-      if (!atStart) turn(-1);
-    } else {
-      setControlsShown((shown) => !shown);
-    }
+    if (travelled <= -SWIPE_PX && !atEnd) turn(1);
+    if (travelled >= SWIPE_PX && !atStart) turn(-1);
   }
 
   if (state.kind === "loading") return <p className="text-muted">Loading…</p>;
@@ -131,7 +115,7 @@ export default function StoryPage() {
         <p className="font-display text-2xl">
           {state.kind === "notFound" ? "Story not found." : state.message}
         </p>
-        <Link href="/dashboard" className="font-semibold text-accent hover:underline">
+        <Link href="/dashboard" className="btn-secondary">
           ← Back to your stories
         </Link>
       </div>
@@ -146,6 +130,10 @@ export default function StoryPage() {
       ? `Page ${firstVisible} of ${pages.length}`
       : `Pages ${firstVisible}–${lastVisible} of ${pages.length}`;
 
+  const dots = (
+    <PageDots count={pages.length} first={start} shown={visible.length} />
+  );
+
   return (
     <section
       role="region"
@@ -154,70 +142,66 @@ export default function StoryPage() {
       onPointerUp={onPointerUp}
       className={
         immersive
-          ? "fixed inset-0 z-50 touch-pan-y select-none overscroll-contain bg-background"
+          ? "fixed inset-0 z-50 flex touch-pan-y flex-col overscroll-contain bg-background select-none"
           : "space-y-6"
       }
     >
       {immersive ? (
         <>
-          <PageSpread pages={visible} immersive />
+          <div className="flex items-center gap-2 px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+            <Link href="/dashboard" aria-label="Back to your stories" className="btn-icon">
+              ←
+            </Link>
+            <h1 className="truncate font-display text-lg font-semibold tracking-tight">
+              {s.title}
+            </h1>
+          </div>
+
+          <div className="min-h-0 flex-1 px-4 py-3">
+            <PageSpread pages={visible} immersive />
+          </div>
 
           <nav
             aria-label="Reader controls"
             data-reader-controls
-            inert={!controlsShown}
-            className={`pointer-events-none absolute inset-0 flex flex-col justify-between transition-opacity duration-500 motion-reduce:transition-none ${
-              controlsShown ? "opacity-100" : "opacity-0"
-            }`}
+            className="flex items-center justify-between gap-4 px-6 pt-1 pb-[calc(env(safe-area-inset-bottom)+1rem)]"
           >
-            <div className="pointer-events-auto flex items-center gap-3 border-b border-glass-edge bg-glass px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 backdrop-blur-xl backdrop-saturate-150">
-              <Link
-                href="/dashboard"
-                aria-label="Back to your stories"
-                className="-m-2 p-2 text-xl leading-none text-muted"
-              >
-                ←
-              </Link>
-              <h1 className="truncate font-display text-lg font-semibold tracking-tight">
-                {s.title}
-              </h1>
-            </div>
-
-            <div className="pointer-events-auto flex items-center justify-between gap-4 border-t border-glass-edge bg-glass px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-xl backdrop-saturate-150">
-              <button
-                type="button"
-                aria-label="Previous page"
-                onClick={() => turn(-1)}
-                disabled={atStart}
-                className="-m-2 p-2 text-xl leading-none disabled:opacity-30"
-              >
-                ←
-              </button>
-              <span className="text-sm text-muted">{position}</span>
-              <button
-                type="button"
-                aria-label="Next page"
-                onClick={() => turn(1)}
-                disabled={atEnd}
-                className="-m-2 p-2 text-xl leading-none disabled:opacity-30"
-              >
-                →
-              </button>
-            </div>
+            <button
+              type="button"
+              aria-label="Previous page"
+              onClick={() => turn(-1)}
+              disabled={atStart}
+              className="btn-primary size-16 p-0 text-3xl"
+            >
+              ←
+            </button>
+            {dots}
+            <span className="sr-only">{position}</span>
+            <button
+              type="button"
+              aria-label="Next page"
+              onClick={() => turn(1)}
+              disabled={atEnd}
+              className="btn-primary size-16 p-0 text-3xl"
+            >
+              →
+            </button>
           </nav>
         </>
       ) : (
         <>
-          <Link href="/dashboard" className="text-sm font-semibold text-muted hover:text-accent">
+          <Link
+            href="/dashboard"
+            className="inline-flex rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-lilac-soft hover:text-accent"
+          >
             ← All stories
           </Link>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h1 className="font-display text-4xl font-semibold tracking-tight">{s.title}</h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-              <span>Age {s.targetAge}+</span>
-              <span aria-hidden>·</span>
-              <span>{s.artStyle}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="chip bg-sky-soft">Age {s.targetAge}+</span>
+              <span className="chip bg-peach-soft">{s.artStyle}</span>
               <StatusBadge status={s.status} />
             </div>
           </div>
@@ -231,16 +215,19 @@ export default function StoryPage() {
                   type="button"
                   onClick={() => turn(-1)}
                   disabled={atStart}
-                  className="rounded-xl border border-border bg-surface px-4 py-2 font-semibold disabled:opacity-40"
+                  className="btn-secondary"
                 >
                   ← Previous
                 </button>
-                <span className="text-sm text-muted">{position}</span>
+                <div className="flex flex-col items-center gap-2">
+                  {dots}
+                  <span className="text-sm text-muted">{position}</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => turn(1)}
                   disabled={atEnd}
-                  className="rounded-xl border border-border bg-surface px-4 py-2 font-semibold disabled:opacity-40"
+                  className="btn-secondary"
                 >
                   Next →
                 </button>
@@ -250,5 +237,21 @@ export default function StoryPage() {
         </>
       )}
     </section>
+  );
+}
+
+/** One dot per page, the ones on screen drawn long, so a child can see how far the story has come. */
+function PageDots({ count, first, shown }: { count: number; first: number; shown: number }) {
+  return (
+    <ol aria-hidden className="flex flex-wrap items-center justify-center gap-1.5">
+      {Array.from({ length: count }, (_, i) => (
+        <li
+          key={i}
+          className={`h-2.5 rounded-full transition-all ${
+            i >= first && i < first + shown ? "w-6 bg-accent" : "w-2.5 bg-border"
+          }`}
+        />
+      ))}
+    </ol>
   );
 }

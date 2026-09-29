@@ -23,10 +23,6 @@
   --danger: #c7254e;
   --danger-foreground: #ffffff;
   --danger-soft: #ffe1e6;
-  /* Vellum laid over the illustration: enough of the surface to keep the story legible, thin
-     enough that the colours of the artwork still come through it. */
-  --glass: color-mix(in oklab, var(--surface) 82%, transparent);
-  --glass-edge: color-mix(in oklab, #fffdf8 60%, transparent);
 }
 
 /* The night palette: deep blue under the same pastels, for reading at bedtime. */
@@ -47,8 +43,6 @@
     --danger: #ff8a9b;
     --danger-foreground: #1e1b3a;
     --danger-soft: color-mix(in oklab, #ff5c77 24%, var(--surface));
-    --glass: color-mix(in oklab, var(--surface) 76%, transparent);
-    --glass-edge: color-mix(in oklab, #f3eadf 14%, transparent);
   }
 }
 
@@ -73,8 +67,6 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-danger-foreground: var(--danger-foreground);
-  --color-glass: var(--glass);
-  --color-glass-edge: var(--glass-edge);
   --font-sans: var(--font-nunito);
   --shadow-soft: 0 8px 24px -12px color-mix(in oklab, var(--foreground) 25%, transparent);
   --font-display: var(--font-fredoka);
