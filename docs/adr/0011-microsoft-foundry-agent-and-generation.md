@@ -4,6 +4,15 @@
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
 
+> **Note (2026-09-29).** Foundry is still the one AI platform, but for less than this says. There
+> are **no embeddings** and **no character reference images**: both went with
+> [ADR-0019](0019-mvp-scope-reduction.md). Two deployments remain: a chat deployment for the agent
+> and the brief, and an image deployment for the six page images. The worker (a plain function
+> since [ADR-0020](0020-plain-service-bus-function-for-generation.md), not Durable) also calls the
+> chat deployment, but never for story text: only to reword a refused illustration prompt
+> ([ADR-0025](0025-rewrite-illustration-prompt-after-moderation.md)) and to write the advice for a
+> failed story ([ADR-0027](0027-failed-story-returns-to-its-conversation.md)).
+
 ## Context
 
 Two distinct AI capabilities are needed: (1) a **conversational agent** that interviews the
