@@ -80,3 +80,48 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* The shapes every page shares (ADR-0033): pills for actions, big soft cards, nothing square.
+   Declared as utilities, not plain classes, so they compose with @apply and with variants. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-bold transition duration-150 select-none active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0;
+}
+
+/* A toy-like button: the darker rim underneath makes it look pressable, and pressing sinks it. */
+@utility btn-primary {
+  @apply btn bg-accent text-accent-foreground hover:brightness-105;
+  box-shadow: 0 4px 0 color-mix(in oklab, var(--accent) 65%, black);
+  &:active:not(:disabled) {
+    box-shadow: 0 2px 0 color-mix(in oklab, var(--accent) 65%, black);
+  }
+}
+
+@utility btn-secondary {
+  @apply btn border-2 border-border bg-surface text-foreground hover:border-accent hover:text-accent;
+}
+
+@utility btn-danger {
+  @apply btn bg-danger text-white hover:brightness-110;
+  box-shadow: 0 4px 0 color-mix(in oklab, var(--danger) 65%, black);
+  &:active:not(:disabled) {
+    box-shadow: 0 2px 0 color-mix(in oklab, var(--danger) 65%, black);
+  }
+}
+
+/* A round button holding a single glyph or icon, big enough for a small finger. */
+@utility btn-icon {
+  @apply inline-flex size-11 shrink-0 items-center justify-center rounded-full text-xl leading-none text-muted transition hover:bg-lilac-soft hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30;
+}
+
+@utility card {
+  @apply rounded-[2rem] border-2 border-border bg-surface;
+  box-shadow: 0 8px 24px -12px color-mix(in oklab, var(--foreground) 25%, transparent);
+}
+
+@utility field {
+  @apply w-full rounded-2xl border-2 border-border bg-background px-4 py-2.5 text-foreground transition outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 disabled:opacity-60;
+}
+
+@utility chip {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-bold;
+}

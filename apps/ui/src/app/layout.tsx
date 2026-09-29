@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
+import { Backdrop } from "@/components/Backdrop";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
@@ -28,7 +29,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${fredoka.variable} ${nunito.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans">
+      <body className="isolate flex min-h-full flex-col font-sans">
+        <Backdrop />
         {/* Clerk Core 3 wants the provider inside <body>, not wrapping <html>. */}
         <ClerkProvider>
           <header className="border-b border-border">
