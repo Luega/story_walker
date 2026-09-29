@@ -78,11 +78,15 @@ const REVIEWS = [
   },
 ];
 
+// The three steps and the three reviews wear the same trio of playful colours, in order.
+const STEP_TINTS = ["bg-sun-soft", "bg-sky-soft", "bg-mint-soft"];
+const STEP_DOTS = ["bg-sun", "bg-sky", "bg-mint"];
+
 function StartStory({ className = "" }: { className?: string }) {
   return (
     <Link
       href="/sign-up"
-      className={`inline-block rounded-xl bg-accent px-6 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 ${className}`}
+      className={`btn-primary px-7 py-3.5 text-lg ${className}`}
     >
       Start a story
     </Link>
@@ -113,12 +117,12 @@ export default function LandingPage() {
           height={800}
           priority
           alt="Placeholder photograph standing in for a story being read at bedtime"
-          className="aspect-square w-full rounded-2xl border border-border"
+          className="aspect-square w-full rotate-2 rounded-[2.5rem] border-4 border-surface shadow-soft"
         />
       </section>
 
       {/* The origin story is set like a page of a book: the product's own voice, in its own type. */}
-      <section aria-labelledby="origin" className="space-y-6">
+      <section aria-labelledby="origin" className="space-y-6 rounded-[2.5rem] bg-peach-soft p-6 sm:p-10">
         <h2 id="origin" className="font-display text-2xl font-semibold tracking-tight">
           Where it came from
         </h2>
@@ -128,10 +132,10 @@ export default function LandingPage() {
             width={700}
             height={900}
             alt="Placeholder photograph standing in for a shelf of children’s books"
-            className="h-full max-h-[28rem] w-full rounded-2xl border border-border"
+            className="h-full max-h-[28rem] w-full rounded-[2rem]"
           />
           {/* Sized to the measure of the text inside it, so the panel is a page rather than a banner. */}
-          <div className="rounded-2xl border border-border bg-surface px-6 py-8 sm:px-10 sm:py-12">
+          <div className="card px-6 py-8 sm:px-10 sm:py-12">
             <div className="max-w-[58ch] space-y-5 font-display text-lg leading-[1.75] sm:text-xl">
               <p>
                 It’s a quarter past eight. Something happened at school today — a friend left out of
@@ -158,28 +162,32 @@ export default function LandingPage() {
         </h2>
         <ol className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
           {STEPS.map((step, i) => (
-            <li key={step.title} className="space-y-2 border-t border-border pt-4">
-              <span className="block font-display text-4xl font-semibold text-accent">{i + 1}</span>
-              <h3 className="font-semibold">{step.title}</h3>
-              <p className="text-sm leading-relaxed text-muted">{step.body}</p>
+            <li key={step.title} className={`space-y-3 rounded-[2rem] p-6 ${STEP_TINTS[i % STEP_TINTS.length]}`}>
+              <span
+                className={`flex size-12 items-center justify-center rounded-full font-display text-2xl font-semibold text-foreground ${STEP_DOTS[i % STEP_DOTS.length]}`}
+              >
+                {i + 1}
+              </span>
+              <h3 className="font-display text-xl font-semibold">{step.title}</h3>
+              <p className="leading-relaxed text-muted">{step.body}</p>
             </li>
           ))}
         </ol>
         {/* Two facing pages, the way the reader shows them. */}
-        <div className="grid grid-cols-2 gap-1 overflow-hidden rounded-2xl border border-border">
+        <div className="card grid grid-cols-2 gap-3 p-3">
           <Placeholder
             seed="page-left"
             width={800}
             height={800}
             alt="Placeholder photograph standing in for the left page of a finished story"
-            className="aspect-square w-full"
+            className="aspect-square w-full rounded-[1.5rem]"
           />
           <Placeholder
             seed="page-right"
             width={800}
             height={800}
             alt="Placeholder photograph standing in for the right page of a finished story"
-            className="aspect-square w-full"
+            className="aspect-square w-full rounded-[1.5rem]"
           />
         </div>
       </section>
@@ -189,7 +197,7 @@ export default function LandingPage() {
           Why Story Walker exists
         </h2>
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-10">
-          <div className="space-y-3 border-t border-border pt-4">
+          <div className="space-y-3 rounded-[2rem] bg-mint-soft p-6">
             <h3 className="font-display text-xl font-semibold">The goal</h3>
             <p className="leading-relaxed text-muted">
               Going from “I need a story about this” to reading it aloud should take about as long
@@ -197,7 +205,7 @@ export default function LandingPage() {
               of you. Not a novel, and not a lecture with a dragon in it.
             </p>
           </div>
-          <div className="space-y-3 border-t border-border pt-4">
+          <div className="space-y-3 rounded-[2rem] bg-lilac-soft p-6">
             <h3 className="font-display text-xl font-semibold">The vision</h3>
             <p className="leading-relaxed text-muted">
               Children remember stories long after they stop listening to advice. If the right story
@@ -214,12 +222,12 @@ export default function LandingPage() {
           What parents say
         </h2>
         <ul className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
-          {REVIEWS.map((review) => (
+          {REVIEWS.map((review, i) => (
             <li key={review.name}>
               {/* The caption names the figure, so a quote is never announced without its parent. */}
               <figure
                 aria-labelledby={`review-${review.name}`}
-                className="space-y-4 border-t border-border pt-4"
+                className={`h-full space-y-4 rounded-[2rem] p-6 ${STEP_TINTS[i % STEP_TINTS.length]}`}
               >
                 <blockquote className="font-display text-lg leading-[1.6]">
                   “{review.quote}”
@@ -232,7 +240,7 @@ export default function LandingPage() {
                     width={96}
                     height={96}
                     alt={`Placeholder portrait standing in for ${review.name}`}
-                    className="size-12 shrink-0 rounded-full border border-border"
+                    className="size-12 shrink-0 rounded-full border-2 border-surface"
                   />
                   <figcaption id={`review-${review.name}`} className="text-sm text-muted">
                     {review.name}, {review.about}
@@ -244,8 +252,8 @@ export default function LandingPage() {
         </ul>
       </section>
 
-      <section className="max-w-2xl space-y-6 border-t border-border pt-12">
-        <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+      <section className="space-y-6 rounded-[2.5rem] bg-sun-soft px-6 py-12 text-center sm:px-12">
+        <h2 className="mx-auto max-w-2xl font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           Your child’s next favourite book hasn’t been written yet.
         </h2>
         <StartStory />
