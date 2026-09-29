@@ -1,9 +1,10 @@
 # apps/functions — Azure Functions (generation worker)
 
 The story-generation worker: **one Service Bus-triggered function**, `GenerateStory`
-([ADR-0020](../../docs/adr/0020-plain-service-bus-function-for-generation.md)), plus a timer,
-`FailStaleGenerations`, that settles the stories whose message was lost (see
-[Lost messages](#lost-messages-dead-letters-and-expiry)). There is no
+([ADR-0020](../../docs/adr/0020-plain-service-bus-function-for-generation.md)), plus two that
+settle the stories whose message was lost — `SettleDeadLetteredGeneration` on the dead-letter queue
+and the `FailStaleGenerations` timer (see [Lost messages](#lost-messages-dead-letters-and-expiry)).
+There is no
 orchestrator — [ADR-0004](../../docs/adr/0004-durable-functions-for-generation.md) chose Durable
 Functions for a five-stage pipeline with two fan-out phases, and that pipeline no longer exists.
 
@@ -56,15 +57,23 @@ Two things take a message out of the queue without the worker ever settling its 
 
 - **dead-lettering** — an exception the worker does not catch (the database or Blob Storage down for
   longer than ten deliveries last) moves the message to `story-generation/$DeadLetterQueue`;
-- **expiry** — a message not picked up within its one-hour TTL is dropped
-  (`DeadLetteringOnMessageExpiration` is off in `docker/servicebus/Config.json`).
+- **expiry** — a message not picked up within its one-hour TTL goes to the same place
+  (`DeadLetteringOnMessageExpiration` is on in `docker/servicebus/Config.json`).
 
-Nothing reads the dead-letter queue. Instead `FailStaleGenerations` runs every 15 minutes and fails
-every story still `Generating` two hours after it was queued, reporting a technical problem to its
-conversation exactly as the worker would
-([ADR-0031](../../docs/adr/0031-fail-stories-stuck-in-generating.md)). Two hours because no run can
-start after the TTL (1 h) nor last beyond `functionTimeout` (30 min): **raise the threshold in
-`StaleGenerationSweeper` if either grows.**
+`SettleDeadLetteredGeneration` reads that queue
+([ADR-0032](../../docs/adr/0032-settle-and-remove-dead-lettered-messages.md)). For each message it
+fails the story and reports a technical problem to its conversation, exactly as the worker would,
+then logs Service Bus's reason (`MaxDeliveryCountExceeded` or `TTLExpiredException`) and the
+delivery count — never the body. Returning completes the message, which **removes it**: it is a copy
+of the brief, and the dead-letter queue would otherwise keep it for ever. Dead letters are never
+replayed; the parent tries again from the conversation.
+
+The backstop is `FailStaleGenerations`, which runs every 15 minutes and does the same for every
+story still `Generating` two hours after it was queued
+([ADR-0031](../../docs/adr/0031-fail-stories-stuck-in-generating.md)). Both go through
+`LostGenerationSettler`, which leaves alone a story that is no longer generating, so whichever comes
+second does nothing. Two hours because no run can start after the TTL (1 h) nor last beyond
+`functionTimeout` (30 min): **raise the threshold in `StaleGenerationSweeper` if either grows.**
 
 `maxConcurrentCalls` is pinned to 1 in `host.json` so two stories cannot compete for the same image
 quota.
@@ -72,7 +81,8 @@ quota.
 The function is a thin shell over services in
 [`StoryWalker.Infrastructure/Generation`](../../src/StoryWalker.Infrastructure/Generation) —
 `StoryGenerator`, which runs the loop above, `StoryPersister`, `PageImageRenderer`,
-`IllustrationPromptRewriter`, `GenerationFailureRecorder` and `StaleGenerationSweeper` — so the logic is tested against a real database in
+`IllustrationPromptRewriter`, `GenerationFailureRecorder`, `LostGenerationSettler` and
+`StaleGenerationSweeper` — so the logic is tested against a real database in
 `tests/StoryWalker.Api.Tests` (ADR-0017).
 
 ## Configuration

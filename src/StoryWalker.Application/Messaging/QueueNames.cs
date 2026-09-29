@@ -8,4 +8,10 @@ namespace StoryWalker.Application.Messaging;
 public static class QueueNames
 {
     public const string Ingestion = "story-generation";
+
+    /// <summary>
+    /// Where Service Bus moves an ingestion message after ten failed deliveries, or once it expires.
+    /// Read by the worker, which settles the story and removes the message (ADR-0032).
+    /// </summary>
+    public const string IngestionDeadLetter = Ingestion + "/$DeadLetterQueue";
 }
