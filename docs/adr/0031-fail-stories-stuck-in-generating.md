@@ -4,6 +4,10 @@
 - **Date:** 2026-09-29
 - **Deciders:** Luca Martinelli
 
+> **Amended (2026-09-29) by [ADR-0032](0032-settle-and-remove-dead-lettered-messages.md).** Expired
+> messages are now dead-lettered too, and a function on the dead-letter queue settles their story at
+> once and removes the message. This timer remains as the backstop.
+
 ## Context
 
 The worker settles every story it gets to run: `Complete`, or `Failed` with a report back to the

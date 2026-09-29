@@ -6,7 +6,8 @@
 
 > **Amended.** The queue now triggers the generation function directly; there is no Durable
 > orchestration ([ADR-0020](0020-plain-service-bus-function-for-generation.md)). Dead-lettered and
-> expired messages are not read: a timer fails the stories they leave stuck in `Generating`
+> expired messages settle their story as `Failed` and are removed
+> ([ADR-0032](0032-settle-and-remove-dead-lettered-messages.md)); a timer backs this up
 > ([ADR-0031](0031-fail-stories-stuck-in-generating.md)).
 
 ## Context

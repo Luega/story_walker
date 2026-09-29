@@ -9,7 +9,8 @@
 > ([ADR-0020](0020-plain-service-bus-function-for-generation.md)): retries (§2) happen in-process in
 > `PageImageRenderer`, then through Service Bus redelivery. Of §3, a failed story is no longer
 > retried but can only be deleted ([ADR-0026](0026-one-failed-page-fails-the-story.md)), and a story
-> whose message is lost — dead-lettered or expired — is failed by a timer
+> whose message is lost — dead-lettered or expired — is failed from the dead-letter queue
+> ([ADR-0032](0032-settle-and-remove-dead-lettered-messages.md)), with a timer as backstop
 > ([ADR-0031](0031-fail-stories-stuck-in-generating.md)).
 
 ## Context
