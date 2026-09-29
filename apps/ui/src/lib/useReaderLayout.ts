@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-// A phone shows one page; from tablet width up, two pages face each other as in a bound book.
-const TWO_PAGES = "(min-width: 768px)";
-// Below desktop the reader takes over the whole screen, covering the site header.
-const DESKTOP = "(min-width: 1024px)";
+// Only a desktop - a wide screen driven by a mouse - shows two facing pages, as in a bound book.
+// Phones and tablets, in either orientation, show one page at a time and the reader takes over the
+// whole screen (ADR-0033). The pointer, not the width alone, is what tells a tablet in landscape
+// from a laptop.
+const DESKTOP = "(min-width: 1024px) and (hover: hover) and (pointer: fine)";
 
 function useMediaQuery(query: string): boolean {
   // Server-rendered markup never reaches a reader: the story is fetched client-side, so the first
@@ -31,7 +32,6 @@ export interface ReaderLayout {
 }
 
 export function useReaderLayout(): ReaderLayout {
-  const twoPages = useMediaQuery(TWO_PAGES);
   const desktop = useMediaQuery(DESKTOP);
-  return { pagesPerView: twoPages ? 2 : 1, immersive: !desktop };
+  return { pagesPerView: desktop ? 2 : 1, immersive: !desktop };
 }

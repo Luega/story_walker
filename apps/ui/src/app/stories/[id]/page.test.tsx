@@ -165,6 +165,31 @@ describe("illustrations", () => {
   });
 });
 
+describe("reading on a tablet", () => {
+  // A tablet gets the phone's reader, one page at a time, not a spread (ADR-0033).
+  beforeEach(() => page.viewport(820, 1180));
+  afterEach(() => page.viewport(1280, 800));
+
+  it("shows one page at a time", async () => {
+    serveStory({ pages: sixPages });
+    render(<StoryPage />);
+
+    expect(await screen.findByText("Content of page 1")).toBeInTheDocument();
+    expect(screen.queryByText("Content of page 2")).not.toBeInTheDocument();
+    expect(screen.getByText(/Page 1 of 6/)).toBeInTheDocument();
+  });
+
+  it("turns one page at a time", async () => {
+    serveStory({ pages: sixPages });
+    render(<StoryPage />);
+    await screen.findByText("Content of page 1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByText("Content of page 2")).toBeInTheDocument();
+  });
+});
+
 describe("reading on a phone", () => {
   // The suite pins a desktop viewport; the immersive reader only exists below it.
   beforeEach(() => page.viewport(390, 844));
