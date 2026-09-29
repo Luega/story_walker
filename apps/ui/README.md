@@ -19,7 +19,7 @@ Every route except `/`, `/privacy`, `/sign-in` and `/sign-up` requires a Clerk s
 | `/settings`     | The standing story context (`GET`/`PATCH /me/settings`): four free-text answers — the children, the kind of stories, recurring characters, art style — composed into every new conversation with the agent (ADR-0022). |
 | `/sign-in`, `/sign-up` | Clerk's hosted components (ADR-0002). |
 | `/privacy`      | Public, **draft** privacy page: what is kept, why, who may see it, how to delete it. Linked from the footer and the chat. To be reviewed before launch. |
-| `/stories/[id]` | Story viewer (`GET /stories/{id}`): two facing pages at a time, image above and text below. Only a `Complete` story opens: a generating or failed one sends the reader back to the dashboard, which explains its state, so there is nothing here to poll. |
+| `/stories/[id]` | Story viewer (`GET /stories/{id}`): each page is a card with the illustration on top and the text below it. A desktop (≥1024px with a mouse) shows two pages side by side; phones and tablets get a full-screen reader with one page, a back button, and two always-visible page-turn buttons with page dots; swipe and arrow keys also turn pages (ADR-0033). Only a `Complete` story opens: a generating or failed one sends the reader back to the dashboard, which explains its state, so there is nothing here to poll. |
 
 ## Running locally
 
