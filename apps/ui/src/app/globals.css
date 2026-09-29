@@ -1,28 +1,50 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbf6ee;
+  --background: #fff7ec;
   --surface: #ffffff;
-  --foreground: #2b2118;
-  --muted: #7a6a5b;
-  --border: #eadfcf;
-  --accent: #d9622b;
+  --foreground: #3b2e5a;
+  --muted: #6e6490;
+  --border: #f1e4d3;
+  /* Bright enough to feel like a toy, dark enough to carry white text at 4.5:1. */
+  --accent: #d6336c;
   --accent-foreground: #ffffff;
+  /* The playful set: each colour for marks and fills, its soft tint for backgrounds. */
+  --sun: #ffc83d;
+  --sun-soft: #fff1c7;
+  --sky: #6ec6f5;
+  --sky-soft: #ddf1fd;
+  --mint: #5fd3a5;
+  --mint-soft: #d9f6ea;
+  --lilac: #b69cff;
+  --lilac-soft: #eee7ff;
+  --peach: #ffb38a;
+  --peach-soft: #ffe8da;
+  --danger: #c7254e;
+  --danger-soft: #ffe1e6;
   /* Vellum laid over the illustration: enough of the surface to keep the story legible, thin
      enough that the colours of the artwork still come through it. */
   --glass: color-mix(in oklab, var(--surface) 82%, transparent);
   --glass-edge: color-mix(in oklab, #fffdf8 60%, transparent);
 }
 
+/* The night palette: deep blue under the same pastels, for reading at bedtime. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #1a1512;
-    --surface: #251e19;
-    --foreground: #f3eadf;
-    --muted: #b3a393;
-    --border: #3a2f27;
-    --accent: #f08a4b;
-    --accent-foreground: #1a1512;
+    --background: #1e1b3a;
+    --surface: #2a2650;
+    --foreground: #fff4e6;
+    --muted: #bdb5da;
+    --border: #3b3668;
+    --accent: #ff8fab;
+    --accent-foreground: #1e1b3a;
+    --sun-soft: color-mix(in oklab, var(--sun) 22%, var(--surface));
+    --sky-soft: color-mix(in oklab, var(--sky) 22%, var(--surface));
+    --mint-soft: color-mix(in oklab, var(--mint) 22%, var(--surface));
+    --lilac-soft: color-mix(in oklab, var(--lilac) 22%, var(--surface));
+    --peach-soft: color-mix(in oklab, var(--peach) 22%, var(--surface));
+    --danger: #ff8a9b;
+    --danger-soft: color-mix(in oklab, #ff5c77 24%, var(--surface));
     --glass: color-mix(in oklab, var(--surface) 76%, transparent);
     --glass-edge: color-mix(in oklab, #f3eadf 14%, transparent);
   }
@@ -36,10 +58,22 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-sun: var(--sun);
+  --color-sun-soft: var(--sun-soft);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-mint: var(--mint);
+  --color-mint-soft: var(--mint-soft);
+  --color-lilac: var(--lilac);
+  --color-lilac-soft: var(--lilac-soft);
+  --color-peach: var(--peach);
+  --color-peach-soft: var(--peach-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --color-glass: var(--glass);
   --color-glass-edge: var(--glass-edge);
   --font-sans: var(--font-nunito);
-  --font-display: var(--font-fraunces);
+  --font-display: var(--font-fredoka);
 }
 
 body {

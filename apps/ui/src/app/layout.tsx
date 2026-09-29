@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
 import { CookieConsent } from "@/components/CookieConsent";
-import { Fraunces, Nunito } from "next/font/google";
+import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// Two rounded faces with the same soft terminals (ADR-0033): Fredoka for titles and the story
+// itself, Nunito for the rest of the interface.
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
   subsets: ["latin"],
 });
 
@@ -24,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${nunito.variable} h-full antialiased`}
+      className={`${fredoka.variable} ${nunito.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
         {/* Clerk Core 3 wants the provider inside <body>, not wrapping <html>. */}
