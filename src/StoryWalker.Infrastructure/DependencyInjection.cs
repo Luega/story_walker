@@ -207,6 +207,7 @@ public static class DependencyInjection
         services.AddScoped<PageImageRenderer>();
         services.AddScoped<GenerationFailureRecorder>();
         services.AddScoped<StoryGenerator>();
+        services.AddScoped<LostGenerationSettler>();
         services.AddScoped<StaleGenerationSweeper>();
 
         return services;

@@ -1,26 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using StoryWalker.Application.Agent;
 using StoryWalker.Domain.Enums;
 using StoryWalker.Infrastructure.Persistence;
 
 namespace StoryWalker.Infrastructure.Generation;
 
 /// <summary>
-/// Settles the stories whose message never reached the end of a run (ADR-0031). A message
-/// dead-lettered after ten deliveries, or expired in the queue, leaves its story
-/// <see cref="StoryStatus.Generating"/> for ever: nothing reads the dead-letter queue. This fixes
-/// the story rather than the message, so it covers both, and whatever else loses one.
-/// <para>
-/// Reported to the conversation first, then failed: if the sweep dies between the two, the next
-/// one finds the story still generating and tries again, and the recorder writes its report only
-/// once (ADR-0027).
-/// </para>
+/// The backstop for a story whose message was lost (ADR-0031): fails every story still
+/// <see cref="StoryStatus.Generating"/> long after any run could be going. Dead-lettered and
+/// expired messages are normally settled at once from the dead-letter queue (ADR-0032); this
+/// catches whatever loses a message without dead-lettering it, or a dead-letter function that is
+/// down. It fixes the story rather than the message, so it does not care which.
 /// </summary>
 public sealed class StaleGenerationSweeper(
     StoryWalkerDbContext db,
-    StoryPersister persister,
-    GenerationFailureRecorder failureRecorder,
+    LostGenerationSettler settler,
     TimeProvider time,
     ILogger<StaleGenerationSweeper> logger
 )
@@ -41,31 +35,21 @@ public sealed class StaleGenerationSweeper(
             .Select(s => s.Id)
             .ToListAsync(ct);
 
+        var failed = 0;
         foreach (var storyId in stale)
         {
-            // The first page without a picture is where the run stopped; with no pages at all, the
-            // brief was never even written.
-            var stoppedAt = await db
-                .Pages.Where(p => p.StoryId == storyId && p.Status != PageStatus.Complete)
-                .OrderBy(p => p.PageNo)
-                .Select(p => (int?)p.PageNo)
-                .FirstOrDefaultAsync(ct);
-
             logger.LogWarning(
                 "Story {StoryId} is still generating after {Threshold}; its message was lost. Failing it.",
                 storyId,
                 Threshold
             );
 
-            await failureRecorder.RecordAsync(
-                storyId,
-                stoppedAt ?? 1,
-                GenerationFailureReason.TechnicalProblem,
-                ct
-            );
-            await persister.FailStoryAsync(storyId, ct);
+            if (await settler.SettleAsync(storyId, ct))
+            {
+                failed++;
+            }
         }
 
-        return stale.Count;
+        return failed;
     }
 }

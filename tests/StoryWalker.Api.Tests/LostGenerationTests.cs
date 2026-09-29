@@ -10,13 +10,15 @@ using StoryWalker.Infrastructure.Persistence;
 namespace StoryWalker.Api.Tests;
 
 /// <summary>
-/// Tests <see cref="StaleGenerationSweeper"/> against the real Postgres: a story whose message was
-/// dead-lettered or expired is still <see cref="StoryStatus.Generating"/> long after any run could be
-/// going, and is failed and reported to its conversation (ADR-0031). <c>CreatedAt</c> is stamped by
-/// the DbContext, so the tests move the clock rather than the story.
+/// Tests the handling of a story whose message was lost, against the real Postgres.
+/// <see cref="LostGenerationSettler"/> fails one story and reports it to its conversation; the
+/// dead-letter function calls it for each dead-lettered message (ADR-0032), and
+/// <see cref="StaleGenerationSweeper"/> for each story still <see cref="StoryStatus.Generating"/>
+/// long after any run could be going (ADR-0031). <c>CreatedAt</c> is stamped by the DbContext, so
+/// the sweeper tests move the clock rather than the story.
 /// </summary>
 [Collection(ApiCollection.Name)]
-public sealed class StaleGenerationSweeperTests(StoryWalkerApiFactory factory)
+public sealed class LostGenerationTests(StoryWalkerApiFactory factory)
 {
     private const string Advice = "Something went wrong on our side. Shall we try again?";
 
@@ -25,6 +27,48 @@ public sealed class StaleGenerationSweeperTests(StoryWalkerApiFactory factory)
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static DateTimeOffset Later(TimeSpan after) => DateTimeOffset.UtcNow + after;
+
+    [Fact]
+    public async Task Settle_fails_a_generating_story_and_reports_it()
+    {
+        var (storyId, conversationId) = await SeedGeneratingStoryAsync(renderedPages: 2);
+
+        var settled = await SettleAsync(storyId);
+
+        Assert.True(settled);
+        Assert.Equal(StoryStatus.Failed, await StatusAsync(storyId));
+        var messages = await MessagesAsync(conversationId);
+        Assert.Contains("A technical problem stopped the illustrations at page 3", messages[^2].Content, StringComparison.Ordinal);
+        Assert.Equal(Advice, messages[^1].Content);
+    }
+
+    // The sweeper and the dead-letter function can both reach the same story; the second is a no-op.
+    // So is a story the worker did settle before its message was lost.
+    [Theory]
+    [InlineData(StoryStatus.Complete)]
+    [InlineData(StoryStatus.Failed)]
+    public async Task Settle_leaves_a_settled_story_alone(StoryStatus status)
+    {
+        var (storyId, conversationId) = await SeedGeneratingStoryAsync(renderedPages: 2);
+        await _factory.ExecuteDbAsync(db =>
+            db.Stories.Where(s => s.Id == storyId).ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, status), Ct)
+        );
+
+        var settled = await SettleAsync(storyId);
+
+        Assert.False(settled);
+        Assert.Equal(status, await StatusAsync(storyId));
+        Assert.Equal(3, (await MessagesAsync(conversationId)).Count);
+    }
+
+    // The story may have been deleted since it was queued.
+    [Fact]
+    public async Task Settle_ignores_an_unknown_story()
+    {
+        await _factory.ResetAsync();
+
+        Assert.False(await SettleAsync(Guid.NewGuid()));
+    }
 
     [Fact]
     public async Task Fails_a_story_generating_for_longer_than_the_threshold()
@@ -110,19 +154,28 @@ public sealed class StaleGenerationSweeperTests(StoryWalkerApiFactory factory)
         Assert.Equal(5, (await MessagesAsync(conversationId)).Count);
     }
 
+    private Task<bool> SettleAsync(Guid storyId) =>
+        _factory.ExecuteDbAsync(db => Settler(db).SettleAsync(storyId, Ct));
+
     private Task<int> SweepAsync(DateTimeOffset now) =>
         _factory.ExecuteDbAsync(db =>
             new StaleGenerationSweeper(
                 db,
-                new StoryPersister(db),
-                new GenerationFailureRecorder(
-                    db,
-                    new RecordingChatClient { Reply = Advice },
-                    NullLogger<GenerationFailureRecorder>.Instance
-                ),
+                Settler(db),
                 new FixedTimeProvider(now),
                 NullLogger<StaleGenerationSweeper>.Instance
             ).SweepAsync(Ct)
+        );
+
+    private static LostGenerationSettler Settler(StoryWalkerDbContext db) =>
+        new(
+            db,
+            new StoryPersister(db),
+            new GenerationFailureRecorder(
+                db,
+                new RecordingChatClient { Reply = Advice },
+                NullLogger<GenerationFailureRecorder>.Instance
+            )
         );
 
     /// <summary>
