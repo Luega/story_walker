@@ -73,6 +73,7 @@
   --color-glass: var(--glass);
   --color-glass-edge: var(--glass-edge);
   --font-sans: var(--font-nunito);
+  --shadow-soft: 0 8px 24px -12px color-mix(in oklab, var(--foreground) 25%, transparent);
   --font-display: var(--font-fredoka);
 }
 
@@ -114,8 +115,7 @@ body {
 }
 
 @utility card {
-  @apply rounded-[2rem] border-2 border-border bg-surface;
-  box-shadow: 0 8px 24px -12px color-mix(in oklab, var(--foreground) 25%, transparent);
+  @apply rounded-[2rem] border-2 border-border bg-surface shadow-soft;
 }
 
 @utility field {
