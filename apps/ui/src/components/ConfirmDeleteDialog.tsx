@@ -33,7 +33,7 @@ export function ConfirmDeleteDialog({
       ref={dialogRef}
       onClose={onCancel}
       onCancel={(e) => busy && e.preventDefault()}
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-border bg-surface p-6 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-[2rem] border-2 border-border bg-surface p-7 text-foreground shadow-2xl backdrop:bg-foreground/30 backdrop:backdrop-blur-sm"
     >
       <h2 className="font-display text-xl font-semibold">{heading}</h2>
       <p className="mt-2 leading-relaxed text-muted">{description}</p>
@@ -44,7 +44,7 @@ export function ConfirmDeleteDialog({
           onClick={() => dialogRef.current?.close()}
           disabled={busy}
           autoFocus
-          className="rounded-xl border border-border px-4 py-2.5 font-semibold disabled:opacity-50"
+          className="btn-secondary"
         >
           Cancel
         </button>
@@ -52,7 +52,7 @@ export function ConfirmDeleteDialog({
           type="button"
           onClick={onConfirm}
           disabled={busy}
-          className="rounded-xl bg-red-700 px-4 py-2.5 font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+          className="btn-danger"
         >
           {busy ? "Deleting…" : "Delete"}
         </button>

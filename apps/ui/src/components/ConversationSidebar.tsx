@@ -14,10 +14,10 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
 /** Where a conversation stands, in the words the history uses. */
 function stateOf(c: ConversationSummary): { text: string; className: string } {
   if (c.storyFailed) {
-    return { text: "Story failed · continue to retry", className: "bg-red-100 text-red-800" };
+    return { text: "Story failed · continue to retry", className: "bg-danger-soft text-danger" };
   }
-  if (c.resumable) return { text: "In progress", className: "bg-amber-100 text-amber-800" };
-  return { text: "Story created", className: "bg-emerald-100 text-emerald-800" };
+  if (c.resumable) return { text: "In progress", className: "bg-sun-soft text-foreground" };
+  return { text: "Story created", className: "bg-mint-soft text-foreground" };
 }
 
 /**
@@ -94,23 +94,23 @@ export function ConversationSidebar({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="conversations-heading"
-      className="fixed inset-y-0 left-0 m-0 flex h-dvh max-h-none w-[min(24rem,100vw)] flex-col border-r border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+      className="fixed inset-y-0 left-0 m-0 flex h-dvh max-h-none w-[min(24rem,100vw)] flex-col rounded-r-[2rem] border-r-2 border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-foreground/30 backdrop:backdrop-blur-sm"
     >
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between bg-lilac-soft px-5 py-3">
         <h2 id="conversations-heading" className="font-display text-xl font-semibold">
           Conversations
         </h2>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          className="rounded-full px-2 text-2xl leading-none text-muted hover:text-foreground"
+          className="btn-icon text-2xl"
           aria-label="Close conversations"
         >
           ×
         </button>
       </div>
 
-      <div role="tablist" aria-label="Conversations" className="flex gap-1 border-b border-border px-3 pt-2">
+      <div role="tablist" aria-label="Conversations" className="m-3 flex gap-1 rounded-full bg-background p-1">
         {(
           [
             ["inProgress", "In progress"],
@@ -123,10 +123,8 @@ export function ConversationSidebar({
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition ${
-              tab === key
-                ? "border-accent text-foreground"
-                : "border-transparent text-muted hover:text-foreground"
+            className={`flex-1 rounded-full px-3 py-2 text-sm font-bold transition ${
+              tab === key ? "bg-accent text-accent-foreground" : "text-muted hover:text-foreground"
             }`}
           >
             {label}
@@ -134,9 +132,9 @@ export function ConversationSidebar({
         ))}
       </div>
 
-      <div role="tabpanel" className="flex-1 overflow-y-auto px-3 py-3">
+      <div role="tabpanel" className="flex-1 overflow-y-auto px-3 pb-3">
         {error && (
-          <p role="alert" className="mx-2 mb-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800">
+          <p role="alert" className="mx-2 mb-3 rounded-2xl bg-danger-soft px-4 py-2 text-sm font-semibold text-danger">
             {error}
           </p>
         )}
@@ -246,7 +244,7 @@ function ConversationRow({
   }
 
   return (
-    <li className="group rounded-xl px-2 py-2 hover:bg-background">
+    <li className="group rounded-3xl px-3 py-2 hover:bg-background">
       <div className="flex items-start gap-1">
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -258,7 +256,7 @@ function ConversationRow({
               disabled={saving}
               autoFocus
               aria-label="Conversation title"
-              className="w-full rounded-lg border border-accent bg-background px-2 py-1 font-semibold outline-none disabled:opacity-60"
+              className="field px-3 py-1 font-semibold"
             />
           ) : (
             <button
@@ -273,7 +271,7 @@ function ConversationRow({
             <time dateTime={conversation.lastActivityAt}>
               {dateFormat.format(new Date(conversation.lastActivityAt))}
             </time>
-            <span className={`rounded-full px-2 py-0.5 font-semibold ${state.className}`}>
+            <span className={`chip px-2 py-0.5 ${state.className}`}>
               {state.text}
             </span>
           </div>
@@ -289,7 +287,7 @@ function ConversationRow({
               }}
               aria-label={`Rename “${conversation.title}”`}
               title="Rename"
-              className="rounded-full p-1.5 text-muted transition hover:bg-surface hover:text-accent"
+              className="rounded-full p-1.5 text-muted transition hover:bg-lilac-soft hover:text-accent"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -309,7 +307,7 @@ function ConversationRow({
               onClick={() => onDelete(conversation)}
               aria-label={`Delete “${conversation.title}”`}
               title="Delete"
-              className="rounded-full p-1.5 text-muted transition hover:bg-red-100 hover:text-red-700"
+              className="rounded-full p-1.5 text-muted transition hover:bg-danger-soft hover:text-danger"
             >
               <svg
                 viewBox="0 0 24 24"

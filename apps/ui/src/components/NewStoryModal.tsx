@@ -168,14 +168,14 @@ export function NewStoryModal({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="m-auto flex h-[min(40rem,90vh)] w-[min(40rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+      className="m-auto flex h-[min(40rem,90vh)] w-[min(40rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[2rem] border-2 border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-foreground/30 backdrop:backdrop-blur-sm"
     >
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between bg-sky-soft px-5 py-3">
         <h2 className="font-display text-xl font-semibold">{title}</h2>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          className="rounded-full px-2 text-2xl leading-none text-muted hover:text-foreground"
+          className="btn-icon text-2xl"
           aria-label="Close"
         >
           ×
@@ -186,7 +186,7 @@ export function NewStoryModal({
           came from, here rather than on a settings page they may never have seen, is what makes
           that read as helpful rather than uncanny. */}
       {!existingId && (
-        <p className="border-b border-border px-5 py-2 text-xs text-muted">
+        <p className="border-b-2 border-border px-5 py-2 text-xs text-muted">
           The agent already has your{" "}
           <Link href="/settings" className="underline hover:text-foreground">
             story settings
@@ -197,7 +197,7 @@ export function NewStoryModal({
 
       {/* Told before they type: conversations are kept, and not only the parent can see them
           (ADR-0028). */}
-      <p className="border-b border-border px-5 py-2 text-xs text-muted">
+      <p className="border-b-2 border-border px-5 py-2 text-xs text-muted">
         Conversations are saved so you can pick them up later or create related stories. Our
         technical staff may see them to help you. You can delete them at any time.{" "}
         <Link href="/privacy" className="underline hover:text-foreground">
@@ -209,10 +209,10 @@ export function NewStoryModal({
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
             <p
-              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 leading-relaxed ${
+              className={`max-w-[85%] whitespace-pre-wrap rounded-3xl px-4 py-2.5 leading-relaxed ${
                 m.role === "user"
-                  ? "rounded-br-sm bg-accent text-accent-foreground"
-                  : "rounded-bl-sm bg-background"
+                  ? "rounded-br-lg bg-accent text-accent-foreground"
+                  : "rounded-bl-lg bg-lilac-soft"
               }`}
             >
               {m.text}
@@ -229,13 +229,13 @@ export function NewStoryModal({
       </div>
 
       {error && (
-        <p role="alert" className="mx-5 mb-2 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800">
+        <p role="alert" className="mx-5 mb-2 rounded-2xl bg-danger-soft px-4 py-2 text-sm font-semibold text-danger">
           {error}
         </p>
       )}
 
       {readOnly === "created" && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-border px-5 py-4">
           <p className="text-sm text-muted">
             This story has already been created, so the conversation can only be read.
           </p>
@@ -243,7 +243,7 @@ export function NewStoryModal({
             <button
               type="button"
               onClick={() => onStartBasedOn(buildOn)}
-              className="rounded-xl bg-accent px-4 py-2.5 font-semibold text-accent-foreground transition hover:brightness-105"
+              className="btn-primary"
             >
               New story based on this one
             </button>
@@ -252,7 +252,7 @@ export function NewStoryModal({
       )}
 
       {canWrite && (
-        <form onSubmit={send} className="flex items-end gap-2 border-t border-border px-5 py-4">
+        <form onSubmit={send} className="flex items-end gap-2 border-t-2 border-border px-5 py-4">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -261,12 +261,12 @@ export function NewStoryModal({
             rows={2}
             autoFocus
             placeholder="Write a message…"
-            className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 outline-none focus:border-accent disabled:opacity-60"
+            className="field flex-1 resize-none"
           />
           <button
             type="submit"
             disabled={sending || !input.trim()}
-            className="rounded-xl bg-accent px-4 py-2.5 font-semibold text-accent-foreground disabled:opacity-50"
+            className="btn-primary"
           >
             Send
           </button>
