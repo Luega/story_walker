@@ -36,7 +36,7 @@ const titleInput = () => screen.getByRole("textbox", { name: "Story title" });
 const cardOf = (title: string) => screen.getByRole("heading", { name: title }).parentElement;
 
 /** The overlay that marks a failed story inactive, if the card has one. */
-const overlayOf = (title: string) => cardOf(title)!.querySelector(":scope > .bg-red-500\\/15");
+const overlayOf = (title: string) => cardOf(title)!.querySelector(":scope > .bg-danger-soft\\/60");
 
 describe("reading", () => {
   it("links to a story that is ready", () => {
@@ -60,7 +60,7 @@ describe("reading", () => {
     },
   );
 
-  it("covers a failed story with a light red overlay", () => {
+  it("covers a failed story with a light red tint", () => {
     renderCard({ title: "Gone wrong", status: "Failed" });
 
     expect(overlayOf("Gone wrong")).not.toBeNull();

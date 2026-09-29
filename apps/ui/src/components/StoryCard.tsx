@@ -7,6 +7,16 @@ import { StatusBadge } from "./StatusBadge";
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
 
+// Each card wears one of the playful colours along its top, so a shelf of stories looks like a
+// shelf of different books. Picked from the id, so a story keeps its colour between visits.
+const COVERS = ["bg-sun", "bg-sky", "bg-mint", "bg-lilac", "bg-peach"];
+
+function coverOf(id: string): string {
+  let hash = 0;
+  for (const c of id) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  return COVERS[hash % COVERS.length];
+}
+
 /**
  * The link covers the whole card through an ::after overlay rather than wrapping it, so the action
  * buttons can sit inside the card without nesting a button in an anchor. While renaming, the input
@@ -15,7 +25,7 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
  *
  * Only a Complete story links anywhere: the others have nothing to read yet, so the title is plain
  * text and the card drops the affordances that would suggest otherwise. A story still generating
- * can be renamed and deleted. A failed one can only be deleted (ADR-0026): a light red overlay
+ * can be renamed and deleted. A failed one can only be deleted (ADR-0026): a light red tint
  * marks it inactive, the rename action is gone, and delete, its only action, is always visible.
  */
 export function StoryCard({
@@ -76,8 +86,8 @@ export function StoryCard({
   const readable = story.status === "Complete";
   const failed = story.status === "Failed";
   const cardClassName = [
-    "group relative flex w-full flex-col gap-3 rounded-2xl border border-border bg-surface p-5 transition focus-within:border-accent",
-    readable ? "hover:-translate-y-0.5 hover:border-accent hover:shadow-md" : "",
+    "card group relative flex w-full flex-col gap-3 overflow-hidden p-5 pt-8 transition focus-within:border-accent",
+    readable ? "hover:-translate-y-1 hover:rotate-[-0.5deg] hover:border-accent" : "",
   ].join(" ");
   // Dimmed under the overlay, so a failed card reads as inactive and not just as tinted.
   const inactive = failed ? "opacity-60 grayscale" : "";
@@ -88,10 +98,11 @@ export function StoryCard({
 
   return (
     <div className={cardClassName}>
+      <div aria-hidden className={`absolute inset-x-0 top-0 h-3 ${coverOf(story.id)} ${inactive}`} />
       {failed && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-2xl bg-red-500/15 ring-1 ring-inset ring-red-400/40"
+          className="pointer-events-none absolute inset-0 rounded-[2rem] bg-danger-soft/60"
         />
       )}
 
@@ -109,12 +120,12 @@ export function StoryCard({
             disabled={saving}
             autoFocus
             aria-label="Story title"
-            className="w-full rounded-lg border border-accent bg-background px-2 py-1 font-display text-xl font-semibold text-foreground outline-none disabled:opacity-60"
+            className="field px-3 py-1 font-display text-xl font-semibold"
           />
         ) : readable ? (
           <Link
             href={`/stories/${story.id}`}
-            className="outline-none after:absolute after:inset-0 after:rounded-2xl"
+            className="outline-none after:absolute after:inset-0 after:rounded-[2rem]"
           >
             {story.title}
           </Link>
@@ -124,14 +135,14 @@ export function StoryCard({
       </h2>
 
       {!editing && (
-        <div className="absolute right-3 top-3 z-10 flex gap-1">
+        <div className="absolute top-5 right-3 z-10 flex gap-1">
           {!failed && (
             <button
               type="button"
               onClick={startEditing}
               aria-label={`Rename “${story.title}”`}
               title="Rename"
-              className={`rounded-full p-2 text-muted transition hover:bg-background hover:text-accent ${actionVisibility}`}
+              className={`rounded-full p-2 text-muted transition hover:bg-lilac-soft hover:text-accent ${actionVisibility}`}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -153,7 +164,7 @@ export function StoryCard({
             onClick={() => onDelete(story)}
             aria-label={`Delete “${story.title}”`}
             title="Delete"
-            className={`rounded-full p-2 text-muted transition hover:bg-red-100 hover:text-red-700 ${actionVisibility}`}
+            className={`rounded-full p-2 text-muted transition hover:bg-danger-soft hover:text-danger ${actionVisibility}`}
           >
             <svg
               viewBox="0 0 24 24"

@@ -128,7 +128,7 @@ export default function DashboardPage() {
             </p>
           )}
           {quota && atLimit && (
-            <p className="mt-1 text-sm text-amber-800">
+            <p className="mt-2 inline-block rounded-2xl bg-sun-soft px-4 py-2 text-sm font-semibold">
               You&apos;ve used this week&apos;s {quota.limit} stories. You can create more from{" "}
               {resetFormat.format(new Date(quota.resetsAt))}.
             </p>
@@ -138,7 +138,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="rounded-xl border border-border px-5 py-3 font-semibold transition hover:border-accent hover:text-accent"
+            className="btn-secondary px-6 py-3"
           >
             Conversations
           </button>
@@ -150,7 +150,7 @@ export default function DashboardPage() {
               setModalOpen(true);
             }}
             disabled={atLimit}
-            className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-foreground shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-primary px-6 py-3"
           >
             + New story
           </button>
@@ -160,14 +160,14 @@ export default function DashboardPage() {
       {showQueuedNotice && (
         <div
           role="status"
-          className="flex items-center justify-between gap-4 rounded-lg bg-accent/10 px-4 py-3 text-foreground"
+          className="flex items-center justify-between gap-4 rounded-3xl bg-mint-soft px-5 py-3 font-semibold text-foreground"
         >
           <p>Your story is being generated — it will appear below in a moment.</p>
           <button
             type="button"
             onClick={() => setQueuedId(null)}
             aria-label="Dismiss"
-            className="rounded-full px-2 text-xl leading-none text-muted hover:text-foreground"
+            className="btn-icon"
           >
             ×
           </button>
@@ -175,7 +175,7 @@ export default function DashboardPage() {
       )}
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-100 px-4 py-3 text-red-800">
+        <p role="alert" className="rounded-3xl bg-danger-soft px-5 py-3 font-semibold text-danger">
           {error}
         </p>
       )}
@@ -183,7 +183,7 @@ export default function DashboardPage() {
       {stories === null && !error && <p className="text-muted">Loading…</p>}
 
       {stories?.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center text-muted">
+        <div className="rounded-[2rem] border-2 border-dashed border-lilac bg-lilac-soft/50 px-6 py-16 text-center text-muted">
           No stories yet. Press <strong>New story</strong> to get started.
         </div>
       )}

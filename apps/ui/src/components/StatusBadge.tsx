@@ -1,16 +1,16 @@
 import type { StoryStatus } from "@/lib/api";
 
 const LABELS: Record<StoryStatus, { text: string; className: string }> = {
-  Draft: { text: "Draft", className: "bg-stone-200 text-stone-700" },
-  Generating: { text: "Generating", className: "bg-amber-100 text-amber-800 animate-pulse" },
-  Complete: { text: "Ready", className: "bg-emerald-100 text-emerald-800" },
-  Failed: { text: "Failed", className: "bg-red-100 text-red-800" },
+  Draft: { text: "Draft", className: "bg-lilac-soft text-foreground" },
+  Generating: { text: "Generating", className: "bg-sun-soft text-foreground animate-pulse" },
+  Complete: { text: "Ready", className: "bg-mint-soft text-foreground" },
+  Failed: { text: "Failed", className: "bg-danger-soft text-danger" },
 };
 
 export function StatusBadge({ status }: { status: StoryStatus }) {
   const { text, className } = LABELS[status] ?? LABELS.Draft;
   return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${className}`}>
+    <span className={`chip ${className}`}>
       {text}
     </span>
   );
