@@ -6,7 +6,7 @@ Infrastructure-as-code (Bicep or Terraform) provisioning the Azure resources for
   dead-lettering on expiry, as in `docker/servicebus/Config.json`; ADR-0031 and ADR-0032 depend on
   them)
 - Azure Functions on Flex Consumption (generation worker host) + the storage account its host needs
-- PostgreSQL Flexible Server (with the pgvector extension)
+- PostgreSQL Flexible Server (no extensions: the pgvector columns went with ADR-0019)
 - Azure Blob Storage (image store)
 - App hosting for the API and UI
 - Microsoft Foundry resources

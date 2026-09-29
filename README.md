@@ -14,7 +14,7 @@ Users can also create a new story that reuses the characters and art style of an
 | Generation worker | Azure Functions       |
 | Messaging         | Azure Service Bus     |
 | Progress updates  | Polling (SignalR not built, ADR-0006) |
-| Database          | PostgreSQL + pgvector |
+| Database          | PostgreSQL            |
 | Image storage     | Azure Blob Storage    |
 | Authentication    | Clerk                 |
 | AI (agent + gen)  | Microsoft Foundry     |
