@@ -15,7 +15,7 @@ function Illustration({ page }: { page: Page }) {
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-background p-6 text-center text-muted">
+    <div className="absolute inset-0 flex items-center justify-center bg-sky-soft p-6 text-center font-semibold text-muted">
       {page.status === "Failed" ? (
         <span>Illustration unavailable</span>
       ) : (
@@ -26,9 +26,12 @@ function Illustration({ page }: { page: Page }) {
 }
 
 /**
- * One page of the book: the illustration fills it, and the story sits over the artwork on a pane of
- * frosted vellum. `folio` follows the convention of a printed book, where the page number sits in
- * the outer corner - away from the spine.
+ * One page of the book, as a card: the illustration on top, never covered, and the story below it
+ * (ADR-0033). `folio` follows the convention of a printed book, where the page number sits in the
+ * outer corner - away from the spine.
+ *
+ * In the full-screen reader the card has to fit the screen: the picture stays square but no taller
+ * than about half of it, and a long text scrolls inside the card rather than pushing the card off.
  */
 function StoryPage({
   page,
@@ -41,26 +44,24 @@ function StoryPage({
 }) {
   return (
     <article
-      className={
-        immersive
-          ? "relative h-full flex-1 overflow-hidden"
-          : "relative aspect-square overflow-hidden rounded-2xl border border-border bg-background shadow-sm"
-      }
+      className={`card flex flex-col gap-4 p-3 ${
+        immersive ? "max-h-full min-h-0 w-full max-w-2xl" : ""
+      }`}
     >
-      <Illustration page={page} />
       <div
-        className={`absolute inset-x-0 bottom-0 max-h-[60%] overflow-y-auto border-t border-glass-edge bg-glass px-5 pt-5 backdrop-blur-xl backdrop-saturate-150 ${
-          immersive
-            ? "pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:px-7"
-            : "pb-5 sm:px-7"
+        className={`relative mx-auto aspect-square w-full shrink-0 overflow-hidden rounded-[1.5rem] ${
+          immersive ? "max-w-[55dvh]" : ""
         }`}
       >
-        <p className="mx-auto max-w-prose whitespace-pre-line font-display text-lg leading-[1.7] sm:text-xl">
+        <Illustration page={page} />
+      </div>
+      <div className={`px-3 pb-2 sm:px-4 ${immersive ? "min-h-0 flex-1 overflow-y-auto" : ""}`}>
+        <p className="mx-auto max-w-prose font-display text-xl leading-relaxed whitespace-pre-line sm:text-2xl">
           {page.content}
         </p>
         <span
-          className={`mt-4 block font-display text-sm text-muted ${
-            folio === "left" ? "text-left" : "text-right"
+          className={`mt-3 flex size-9 items-center justify-center rounded-full bg-sun-soft font-display text-sm font-semibold text-muted ${
+            folio === "left" ? "mr-auto" : "ml-auto"
           }`}
         >
           {page.pageNo}
@@ -71,16 +72,15 @@ function StoryPage({
 }
 
 /**
- * The pages currently on show: one on a phone, two facing each other from tablet width up, parted
- * by a hairline where the spine of the book would be.
+ * The pages currently on show: one on a phone or a tablet, two side by side on a desktop.
  */
 export function PageSpread({ pages, immersive }: { pages: Page[]; immersive: boolean }) {
   return (
     <div
       className={
         immersive
-          ? "flex h-full w-full divide-x divide-border/70"
-          : "grid grid-cols-1 gap-6 md:grid-cols-2"
+          ? "flex h-full min-h-0 w-full items-center justify-center"
+          : "grid grid-cols-1 items-start gap-6 lg:grid-cols-2"
       }
     >
       {pages.map((p, i) => (

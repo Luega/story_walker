@@ -57,8 +57,8 @@ And the reader becomes:
 ### Negative / trade-offs accepted
 - The page-turn controls take room from the card on a phone; the text scrolls inside the card when a
   page is long.
-- The illustration frame is capped in height below desktop, so on a phone in landscape the picture
-  is cropped rather than shrunk.
+- The illustration stays square but no taller than about half the screen below desktop, so on a
+  phone in landscape the picture is small.
 - The device test uses the primary pointer: a laptop with a touch screen and a mouse reads as a
   desktop, and a tablet with a trackpad attached may too.
 
