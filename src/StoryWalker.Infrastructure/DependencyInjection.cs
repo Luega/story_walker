@@ -38,7 +38,8 @@ public static class DependencyInjection
     {
         services.AddDbContext<StoryWalkerDbContext>(options => options.UseNpgsql(connectionString));
 
-        // The weekly story limit (ADR-0030). The clock is injected so tests can stop it.
+        // The clock of the weekly story limit (ADR-0030) and of the stale-story sweep (ADR-0031),
+        // injected so tests can stop it.
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<StoryQuotaService>();
 
@@ -206,6 +207,7 @@ public static class DependencyInjection
         services.AddScoped<PageImageRenderer>();
         services.AddScoped<GenerationFailureRecorder>();
         services.AddScoped<StoryGenerator>();
+        services.AddScoped<StaleGenerationSweeper>();
 
         return services;
     }

@@ -83,7 +83,10 @@ public sealed class StoryPersister(StoryWalkerDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Marks the whole story failed; used when the orchestration itself blows up.</summary>
+    /// <summary>
+    /// Marks the whole story failed, whatever its pages; used for a story whose message was lost
+    /// (ADR-0031).
+    /// </summary>
     public async Task FailStoryAsync(Guid storyId, CancellationToken ct = default)
     {
         var story = await db.Stories.FirstOrDefaultAsync(s => s.Id == storyId, ct);
