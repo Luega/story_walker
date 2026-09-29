@@ -4,6 +4,13 @@
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
 
+> **Not built (as of 2026-09-29).** No SignalR service, hub or client exists. Progress reaches the
+> browser by polling instead: the dashboard reloads the story list every 5 seconds while any story
+> is `Generating`, and the story viewer opens only a `Complete` story, so it has nothing to wait
+> for. The events below also name Durable activities that
+> [ADR-0020](0020-plain-service-bus-function-for-generation.md) removed; if this is ever built, they
+> would come from `StoryGenerator`.
+
 ## Context
 
 Generation is asynchronous ([ADR-0003](0003-async-generation-via-service-bus.md)), so the

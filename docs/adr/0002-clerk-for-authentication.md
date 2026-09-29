@@ -4,6 +4,10 @@
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
 
+> **Note (2026-09-29).** The obligation to authenticate SignalR connections with the Clerk token
+> is moot for now: SignalR was never built, and the dashboard polls the API instead
+> ([ADR-0006](0006-azure-signalr-for-realtime.md)).
+
 ## Context
 
 The app requires user authentication: sign-up/sign-in, session management, and a private

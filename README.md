@@ -13,7 +13,7 @@ Users can also create a new story that reuses the characters and art style of an
 | API               | ASP .NET Core         |
 | Generation worker | Azure Functions       |
 | Messaging         | Azure Service Bus     |
-| Realtime          | Azure SignalR Service |
+| Progress updates  | Polling (SignalR not built, ADR-0006) |
 | Database          | PostgreSQL + pgvector |
 | Image storage     | Azure Blob Storage    |
 | Authentication    | Clerk                 |
@@ -56,7 +56,7 @@ story_walker/                       # monorepo root
 - [0003 — Asynchronous generation via Azure Service Bus](docs/adr/0003-async-generation-via-service-bus.md)
 - [0004 — Durable Functions for the generation pipeline](docs/adr/0004-durable-functions-for-generation.md) *(superseded by 0020)*
 - [0005 — Idempotency and failure handling in the generation pipeline](docs/adr/0005-idempotency-and-failure-handling.md) *(amended by 0020, 0026, 0031, 0032)*
-- [0006 — Azure SignalR for realtime progress](docs/adr/0006-azure-signalr-for-realtime.md)
+- [0006 — Azure SignalR for realtime progress](docs/adr/0006-azure-signalr-for-realtime.md) *(not built)*
 - [0007 — Single-pass text generation for narrative coherence](docs/adr/0007-single-pass-text-generation.md)
 - [0008 — Per-character reference images for visual consistency](docs/adr/0008-per-character-reference-images.md) *(superseded by 0019)*
 - [0009 — PostgreSQL + pgvector for story continuity and reuse](docs/adr/0009-postgresql-pgvector-continuity.md) *(superseded by 0019)*

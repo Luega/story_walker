@@ -5,7 +5,9 @@
 - **Deciders:** Luca Martinelli
 
 > **Amended.** The queue now triggers the generation function directly; there is no Durable
-> orchestration ([ADR-0020](0020-plain-service-bus-function-for-generation.md)). Dead-lettered and
+> orchestration ([ADR-0020](0020-plain-service-bus-function-for-generation.md)). Progress reaches
+> the browser by polling, not SignalR, which was never built
+> ([ADR-0006](0006-azure-signalr-for-realtime.md)). Dead-lettered and
 > expired messages settle their story as `Failed` and are removed
 > ([ADR-0032](0032-settle-and-remove-dead-lettered-messages.md)); a timer backs this up
 > ([ADR-0031](0031-fail-stories-stuck-in-generating.md)).

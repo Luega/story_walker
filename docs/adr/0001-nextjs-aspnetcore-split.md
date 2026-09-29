@@ -4,6 +4,10 @@
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
 
+> **Note (2026-09-29).** The front-end and the API talk over HTTPS (REST + JSON) only: the Azure
+> SignalR channel for realtime updates was never built, and the dashboard polls instead
+> ([ADR-0006](0006-azure-signalr-for-realtime.md)).
+
 ## Context
 
 Story Walker needs a rich, interactive front-end (auth, dashboard, conversational
