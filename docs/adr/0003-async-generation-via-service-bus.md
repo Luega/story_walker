@@ -4,6 +4,11 @@
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
 
+> **Amended.** The queue now triggers the generation function directly; there is no Durable
+> orchestration ([ADR-0020](0020-plain-service-bus-function-for-generation.md)). Dead-lettered and
+> expired messages are not read: a timer fails the stories they leave stuck in `Generating`
+> ([ADR-0031](0031-fail-stories-stuck-in-generating.md)).
+
 ## Context
 
 Generating a story takes from many seconds to several minutes: it involves a sequence of

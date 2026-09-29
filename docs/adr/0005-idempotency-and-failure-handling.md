@@ -4,6 +4,14 @@
 - **Date:** 2026-06-09
 - **Deciders:** Luca Martinelli
 
+> **Amended.** The idempotency rule (§1) stands, and is now the resume mechanism itself. The rest
+> describes Durable Functions, replaced on 2026-09-15 by a plain Service Bus function
+> ([ADR-0020](0020-plain-service-bus-function-for-generation.md)): retries (§2) happen in-process in
+> `PageImageRenderer`, then through Service Bus redelivery. Of §3, a failed story is no longer
+> retried but can only be deleted ([ADR-0026](0026-one-failed-page-fails-the-story.md)), and a story
+> whose message is lost — dead-lettered or expired — is failed by a timer
+> ([ADR-0031](0031-fail-stories-stuck-in-generating.md)).
+
 ## Context
 
 With Durable Functions ([ADR-0004](0004-durable-functions-for-generation.md)), the
