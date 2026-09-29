@@ -3,7 +3,7 @@ namespace StoryWalker.Application.Brief;
 /// <summary>
 /// The complete, schema-validated generation brief the agent emits when the interview is
 /// confirmed (ADR-0013). The API validates it and enqueues it on the ingestion queue (ADR-0003);
-/// the Durable worker persists the pages and renders one image per page (ADR-0004).
+/// the worker persists the pages and renders one image per page (ADR-0020).
 /// This is the producer/consumer contract — serialized as camelCase JSON.
 /// <para>
 /// Every story is self-contained (ADR-0019): there is no character table and no link to another

@@ -195,8 +195,8 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Registers the services the Durable activities delegate to. Scoped, because both share the
-    /// scoped <see cref="StoryWalkerDbContext"/>; the worker opens a scope per activity.
+    /// Registers the services the worker's functions delegate to. Scoped, because they share the
+    /// scoped <see cref="StoryWalkerDbContext"/>; the host opens a scope per invocation.
     /// </summary>
     public static IServiceCollection AddGeneration(this IServiceCollection services)
     {

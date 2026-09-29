@@ -6,7 +6,7 @@ namespace StoryWalker.Infrastructure.Images;
 
 /// <summary>
 /// Blob Storage implementation of <see cref="IImageStore"/> (ADR-0010). Locally this is the
-/// azurite service already running for the Durable task hub — same account, different container.
+/// azurite service the Functions host already needs — same account, different container.
 /// </summary>
 /// <param name="publicBaseUrl">
 /// Base the returned URL is composed from, e.g. <c>http://localhost:10000/devstoreaccount1</c>.

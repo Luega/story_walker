@@ -4,7 +4,7 @@ namespace StoryWalker.Domain.Entities;
 
 /// <summary>
 /// One page of a story. Text and the illustration prompt come from the brief (ADR-0013);
-/// <see cref="ImageUrl"/> is filled in by the <c>GeneratePageImage</c> activity (null until done).
+/// <see cref="ImageUrl"/> is filled in by the worker's <c>PageImageRenderer</c> (null until done).
 /// </summary>
 public class Page : EntityBase
 {

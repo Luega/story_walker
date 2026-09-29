@@ -39,8 +39,8 @@ public sealed class PageImageRenderer(
 
     /// <summary>
     /// Generates the image for one page, uploads it, and records the URL. Idempotent (ADR-0005):
-    /// a page that already has an image is skipped without calling the model, so a replayed
-    /// activity costs nothing.
+    /// a page that already has an image is skipped without calling the model, so a redelivered
+    /// message costs nothing.
     /// </summary>
     /// <returns>How the page ended; only <see cref="PageRenderOutcome.Rendered"/> has an image.</returns>
     public async Task<PageRenderOutcome> RenderAsync(Guid storyId, int pageNo, CancellationToken ct = default)

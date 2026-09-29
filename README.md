@@ -55,7 +55,7 @@ story_walker/                       # monorepo root
 - [0002 — Clerk for authentication](docs/adr/0002-clerk-for-authentication.md)
 - [0003 — Asynchronous generation via Azure Service Bus](docs/adr/0003-async-generation-via-service-bus.md)
 - [0004 — Durable Functions for the generation pipeline](docs/adr/0004-durable-functions-for-generation.md) *(superseded by 0020)*
-- [0005 — Idempotency and failure handling in the generation pipeline](docs/adr/0005-idempotency-and-failure-handling.md)
+- [0005 — Idempotency and failure handling in the generation pipeline](docs/adr/0005-idempotency-and-failure-handling.md) *(amended by 0020, 0026, 0031)*
 - [0006 — Azure SignalR for realtime progress](docs/adr/0006-azure-signalr-for-realtime.md)
 - [0007 — Single-pass text generation for narrative coherence](docs/adr/0007-single-pass-text-generation.md)
 - [0008 — Per-character reference images for visual consistency](docs/adr/0008-per-character-reference-images.md) *(superseded by 0019)*
@@ -74,3 +74,11 @@ story_walker/                       # monorepo root
 - [0021 — Clerk integration: server-side token proxy and JIT provisioning](docs/adr/0021-clerk-integration.md)
 - [0022 — Standing user context in the agent's system prompt](docs/adr/0022-standing-user-context-in-the-agent-prompt.md)
 - [0023 — OpenTelemetry to Application Insights, end to end](docs/adr/0023-opentelemetry-to-application-insights.md)
+- [0024 — Child-safe content: prompt rules and a friendly content-filter answer](docs/adr/0024-child-safe-content.md)
+- [0025 — Rewrite an illustration prompt once after a moderation refusal](docs/adr/0025-rewrite-illustration-prompt-after-moderation.md)
+- [0026 — One failed page fails the story, and a failed story can only be deleted](docs/adr/0026-one-failed-page-fails-the-story.md)
+- [0027 — A failed story returns to its conversation, with the agent's advice](docs/adr/0027-failed-story-returns-to-its-conversation.md)
+- [0028 — Conversation history: kept, titled, resumable, and disclosed](docs/adr/0028-conversation-history.md)
+- [0029 — A new story based on a previous one, from a fresh conversation](docs/adr/0029-stories-based-on-a-previous-one.md)
+- [0030 — A weekly limit of seven finished stories](docs/adr/0030-weekly-story-limit.md)
+- [0031 — A timer fails stories stuck in Generating](docs/adr/0031-fail-stories-stuck-in-generating.md)

@@ -7,16 +7,16 @@ using StoryWalker.Infrastructure.Persistence;
 namespace StoryWalker.Infrastructure.Generation;
 
 /// <summary>
-/// Writes the brief's pages and settles the story's final status. The Durable activities that call
-/// this are two-line shells, so the logic worth testing lives here and is exercised against a real
-/// database in the API test suite rather than through a Durable test harness (ADR-0017).
+/// Writes the brief's pages and settles the story's final status. The functions that call this are
+/// thin shells, so the logic worth testing lives here and is exercised against a real database in
+/// the API test suite rather than through the Functions host (ADR-0017).
 /// </summary>
 public sealed class StoryPersister(StoryWalkerDbContext db)
 {
     /// <summary>
     /// Writes one <see cref="Page"/> per brief page, all <see cref="PageStatus.Pending"/> until the
     /// renderer fills in the image. Idempotent (ADR-0005): a redelivered message that replays this
-    /// activity finds the pages already there and does nothing.
+    /// step finds the pages already there and does nothing.
     /// </summary>
     public async Task PersistPagesAsync(Guid storyId, GenerationBrief brief, CancellationToken ct = default)
     {

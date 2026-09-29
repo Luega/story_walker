@@ -2,8 +2,9 @@
 
 Infrastructure-as-code (Bicep or Terraform) provisioning the Azure resources for Story Walker:
 
-- Azure Service Bus (generation ingestion queue)
-- Azure Durable Functions (generation worker host) + its Azure Storage task hub
+- Azure Service Bus (generation ingestion queue — one-hour message TTL, ten deliveries, as in
+  `docker/servicebus/Config.json`; ADR-0031 depends on the TTL)
+- Azure Functions on Flex Consumption (generation worker host) + the storage account its host needs
 - Azure SignalR Service
 - PostgreSQL Flexible Server (with the pgvector extension)
 - Azure Blob Storage (image store)

@@ -11,9 +11,9 @@ using StoryWalker.Infrastructure.Persistence;
 namespace StoryWalker.Api.Tests;
 
 /// <summary>
-/// Tests the services the Durable activities delegate to (ADR-0004). The activities themselves are
-/// two-line shells, so testing these against a real database covers the logic without a Durable
-/// test harness. Idempotency is the contract ADR-0005 obliges us to prove.
+/// Tests the services the generation function delegates to (ADR-0020). The function itself is a
+/// thin shell, so testing these against a real database covers the logic without the Functions
+/// host. Idempotency is the contract ADR-0005 obliges us to prove.
 /// </summary>
 [Collection(ApiCollection.Name)]
 public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
@@ -89,7 +89,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         var storyId = await SeedGeneratingStoryAsync();
         var brief = Brief();
 
-        // A redelivered Service Bus message replays the activity (ADR-0005).
+        // A redelivered Service Bus message replays the step (ADR-0005).
         await _factory.ExecuteDbAsync(db => new StoryPersister(db).PersistPagesAsync(storyId, brief, Ct));
         await _factory.ExecuteDbAsync(db => new StoryPersister(db).PersistPagesAsync(storyId, brief, Ct));
 
@@ -141,7 +141,7 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
             await NewRenderer(db, generator, store).RenderAsync(storyId, 1, Ct);
         });
 
-        // A Durable retry replays the activity; the page already has an image, so no second call.
+        // A redelivered message replays the step; the page already has an image, so no second call.
         await _factory.ExecuteDbAsync(db => NewRenderer(db, generator, store).RenderAsync(storyId, 1, Ct));
 
         Assert.Equal(1, generator.CallCount);

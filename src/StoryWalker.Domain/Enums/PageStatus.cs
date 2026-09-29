@@ -1,8 +1,9 @@
 namespace StoryWalker.Domain.Enums;
 
 /// <summary>
-/// Per-page generation status. Written by the <c>GeneratePageImage</c> activity so the
-/// dashboard has a source of truth independent of the Durable runtime (ER diagram; ADR-0005).
+/// Per-page generation status. Written by the worker's <c>PageImageRenderer</c>; it is also the
+/// worker's checkpoint, since a redelivered message resumes at the first page not
+/// <see cref="Complete"/> (ADR-0005/0020).
 /// </summary>
 public enum PageStatus
 {

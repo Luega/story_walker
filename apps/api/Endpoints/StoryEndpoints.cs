@@ -282,7 +282,7 @@ public static class StoryEndpoints
     /// <summary>
     /// Persists a <see cref="Story"/> in <see cref="StoryStatus.Generating"/> from the authored brief
     /// and enqueues that brief for the generation worker (ADR-0003). Only the story row is created
-    /// here; the worker's <c>PersistPages</c> activity writes the pages.
+    /// here; the worker's <c>StoryPersister</c> writes the pages.
     /// </summary>
     private static async Task<Story> StartGenerationAsync(
         StoryWalkerDbContext db,
