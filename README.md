@@ -83,3 +83,4 @@ story_walker/                       # monorepo root
 - [0030 — A weekly limit of seven finished stories](docs/adr/0030-weekly-story-limit.md)
 - [0031 — A timer fails stories stuck in Generating](docs/adr/0031-fail-stories-stuck-in-generating.md) *(amended by 0032)*
 - [0032 — Dead-lettered messages settle their story and are removed](docs/adr/0032-settle-and-remove-dead-lettered-messages.md)
+- [0033 — A playful visual design, and a one-page reader below desktop](docs/adr/0033-playful-visual-design.md)
