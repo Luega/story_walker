@@ -43,11 +43,13 @@
   <ItemGroup Label="Messaging / Functions">
     <!-- Producer (apps/api → Infrastructure): publishes the validated brief onto the ingestion
          queue (ADR-0003). Consumer (apps/functions): the isolated-worker Functions host triggered
-         by that queue (ADR-0020). -->
+         by that queue (ADR-0020), plus a timer that fails the stories whose message was lost
+         (ADR-0031). -->
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
   </ItemGroup>
 
   <ItemGroup Label="Observability">

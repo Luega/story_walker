@@ -9,8 +9,8 @@ using OpenTelemetry;
 using StoryWalker.Infrastructure;
 
 // Isolated-worker host for the generation worker. ConfigureFunctionsWorkerDefaults wires the
-// Service Bus trigger discovered from the referenced packages; the function itself needs the EF
-// model plus the Foundry and Blob adapters (ADR-0020).
+// Service Bus and timer triggers discovered from the referenced packages; the functions need the EF
+// model plus the Foundry and Blob adapters (ADR-0020, ADR-0031).
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
     // One log line per SQL statement, and the same queries already arrive as Npgsql spans. The

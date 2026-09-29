@@ -1,7 +1,9 @@
 # apps/functions — Azure Functions (generation worker)
 
 The story-generation worker: **one Service Bus-triggered function**, `GenerateStory`
-([ADR-0020](../../docs/adr/0020-plain-service-bus-function-for-generation.md)). There is no
+([ADR-0020](../../docs/adr/0020-plain-service-bus-function-for-generation.md)), plus a timer,
+`FailStaleGenerations`, that settles the stories whose message was lost (see
+[Lost messages](#lost-messages-dead-letters-and-expiry)). There is no
 orchestrator — [ADR-0004](../../docs/adr/0004-durable-functions-for-generation.md) chose Durable
 Functions for a five-stage pipeline with two fan-out phases, and that pipeline no longer exists.
 
@@ -48,13 +50,29 @@ page text, so the picture still shows the same moment. If there is no usable rew
 refused too, the page is marked `Failed` and the story carries on. The rewritten prompt replaces the
 original on the `Page` row.
 
+## Lost messages: dead letters and expiry
+
+Two things take a message out of the queue without the worker ever settling its story:
+
+- **dead-lettering** — an exception the worker does not catch (the database or Blob Storage down for
+  longer than ten deliveries last) moves the message to `story-generation/$DeadLetterQueue`;
+- **expiry** — a message not picked up within its one-hour TTL is dropped
+  (`DeadLetteringOnMessageExpiration` is off in `docker/servicebus/Config.json`).
+
+Nothing reads the dead-letter queue. Instead `FailStaleGenerations` runs every 15 minutes and fails
+every story still `Generating` two hours after it was queued, reporting a technical problem to its
+conversation exactly as the worker would
+([ADR-0031](../../docs/adr/0031-fail-stories-stuck-in-generating.md)). Two hours because no run can
+start after the TTL (1 h) nor last beyond `functionTimeout` (30 min): **raise the threshold in
+`StaleGenerationSweeper` if either grows.**
+
 `maxConcurrentCalls` is pinned to 1 in `host.json` so two stories cannot compete for the same image
 quota.
 
 The function is a thin shell over services in
 [`StoryWalker.Infrastructure/Generation`](../../src/StoryWalker.Infrastructure/Generation) —
 `StoryGenerator`, which runs the loop above, `StoryPersister`, `PageImageRenderer`,
-`IllustrationPromptRewriter` and `GenerationFailureRecorder` — so the logic is tested against a real database in
+`IllustrationPromptRewriter`, `GenerationFailureRecorder` and `StaleGenerationSweeper` — so the logic is tested against a real database in
 `tests/StoryWalker.Api.Tests` (ADR-0017).
 
 ## Configuration
@@ -80,7 +98,7 @@ as `docker-compose.yml` already does.
 | Key | Read by | Local value | Notes |
 |---|---|---|---|
 | `FUNCTIONS_WORKER_RUNTIME` | host | `dotnet-isolated` | Fixed. |
-| `AzureWebJobsStorage` | host | `UseDevelopmentStorage=true` | Required by the host for any non-HTTP trigger. Points at azurite. |
+| `AzureWebJobsStorage` | host | `UseDevelopmentStorage=true` | Required by the host for any non-HTTP trigger. Points at azurite. The timer keeps its schedule and its lock there, so only one instance sweeps. |
 | `ServiceBusConnection` | host | emulator string, as in the template | The `Connection` name on `[ServiceBusTrigger]` in `GenerateStory.cs`. The emulator key is a public placeholder, not a secret. |
 | `ConnectionStrings:Postgres` | `Program.cs` | compose's postgres | Under `Values`, **not** the top-level `ConnectionStrings` block: that block is SqlClient-specific and is not published to Azure. |
 | `Foundry:Endpoint` | `Program.cs` | **you fill in** | Your Foundry resource, e.g. `https://<name>.services.ai.azure.com`. Same endpoint as the API. |
