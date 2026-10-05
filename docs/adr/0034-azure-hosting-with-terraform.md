@@ -58,7 +58,8 @@ environment, with:
 - Until CI pushes images, both container apps run Microsoft's quickstart placeholder.
 
 ### Things this decision obliges us to build or watch
-- A Dockerfile for the UI, with the `NEXT_PUBLIC_*` values as build arguments.
+- A Dockerfile for the UI, with the `NEXT_PUBLIC_*` values as build arguments — done:
+  `apps/ui/Dockerfile`, one image per environment.
 - The state storage account, created by hand once per subscription.
 - CI workflows that build and push the images, deploy the worker package, and pass the image tags
   to `terraform apply`.

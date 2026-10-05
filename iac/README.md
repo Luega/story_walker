@@ -49,11 +49,11 @@ quickstart placeholder. Afterwards pass them on the command line:
 
 ## Still missing before a real deployment
 
-- **A UI Dockerfile.** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
-  `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING` are inlined at `next build`, so they are build
-  arguments of the image, not only container settings.
 - **CI/CD** in `../.github/workflows`: build and push both images, deploy the worker package to the
-  function app (`function_app_name` output), then apply with the new tags.
+  function app (`function_app_name` output), then apply with the new tags. The UI image is built
+  per environment: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
+  `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING` (the `application_insights_connection_string`
+  output) are build arguments of `apps/ui/Dockerfile`, inlined at `next build`.
 - **Clerk:** add the `ui_url` output to the instance's allowed origins.
 - **Image model region:** `gpt-image-1-mini` is offered in few regions and may need access approval;
   move `foundry_location` if the deployment is refused.
