@@ -1,5 +1,4 @@
-# The API and the UI on Azure Container Apps. The API already ships as a container
-# (apps/api/Dockerfile); the UI needs a Dockerfile of its own before ui_image can be set.
+# The API and the UI on Azure Container Apps, from apps/api/Dockerfile and apps/ui/Dockerfile.
 #
 # Only the UI is reachable from the internet. The browser never calls the API directly — the UI's
 # server-side route forwards /api/* with the Clerk token attached (ADR-0021) — so the API's ingress
@@ -41,6 +40,9 @@ resource "azurerm_user_assigned_identity" "ui" {
 locals {
   # Until CI has pushed real images, both apps run Microsoft's quickstart image, which listens on 80.
   placeholder_image = "mcr.microsoft.com/k8se/quickstart:latest"
+
+  # The image's port: 3000 for the UI (apps/ui/Dockerfile), 8080 for the API.
+  ui_port = var.ui_image == null ? 80 : 3000
 
   api_name = "ca-${local.name}-api"
   ui_name  = "ca-${local.name}-ui"
@@ -179,7 +181,7 @@ resource "azurerm_container_app" "ui" {
 
   ingress {
     external_enabled = true
-    target_port      = var.ui_image == null ? 80 : 3000
+    target_port      = local.ui_port
     transport        = "auto"
 
     traffic_weight {
@@ -197,6 +199,22 @@ resource "azurerm_container_app" "ui" {
       image  = coalesce(var.ui_image, local.placeholder_image)
       cpu    = 0.5
       memory = "1Gi"
+
+      # "/" is the public landing page: it renders without a session or the API, so it says the
+      # Next server is up and nothing more. The default TCP probe would pass before Next can serve.
+      readiness_probe {
+        transport = "HTTP"
+        port      = local.ui_port
+        path      = "/"
+      }
+
+      liveness_probe {
+        transport               = "HTTP"
+        port                    = local.ui_port
+        path                    = "/"
+        initial_delay           = 10
+        failure_count_threshold = 3
+      }
 
       env {
         name  = "API_URL"
