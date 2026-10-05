@@ -40,6 +40,33 @@ header ([ADR-0021](../../docs/adr/0021-clerk-integration.md)). The token never r
 and the API needs no CORS policy. With no session the handler answers `401` without calling the
 API. `API_URL` is server-only; override it in `.env`.
 
+## Running in a container
+
+`Dockerfile` builds the image Azure runs ([ADR-0034](../../docs/adr/0034-azure-hosting-with-terraform.md)).
+The build context is this folder, not the monorepo root. `next.config.ts` sets
+`output: "standalone"`, so the image ships `server.js` with only the dependencies it uses, and runs
+it as the unprivileged `node` user on port 3000.
+
+```bash
+docker build -t storywalker-ui \
+  --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_... .
+docker run --env-file .env -p 3000:3000 storywalker-ui
+```
+
+The settings arrive at two different times:
+
+- **At build:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
+  `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING` (see Telemetry below) are inlined into the
+  browser bundle by `next build`. They are `--build-arg`s, and an image is built per environment.
+  Both are public by design.
+- **At run time:** `API_URL`, `CLERK_SECRET_KEY` and `APPLICATIONINSIGHTS_CONNECTION_STRING` come
+  from the container's environment. `.dockerignore` keeps `.env` out of the build context, so the
+  secret key never ends up in an image layer.
+
+From the repo root, `docker compose --profile api --profile ui up --build` runs the UI with the API
+in containers. It reads `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` from the root `.env`
+(`.env.example`), and takes port 3000, so stop `npm run dev` first.
+
 ## Telemetry
 
 Off unless configured ([ADR-0023](../../docs/adr/0023-opentelemetry-to-application-insights.md)).
