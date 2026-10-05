@@ -84,3 +84,4 @@ story_walker/                       # monorepo root
 - [0031 — A timer fails stories stuck in Generating](docs/adr/0031-fail-stories-stuck-in-generating.md) *(amended by 0032)*
 - [0032 — Dead-lettered messages settle their story and are removed](docs/adr/0032-settle-and-remove-dead-lettered-messages.md)
 - [0033 — A playful visual design, and a one-page reader below desktop](docs/adr/0033-playful-visual-design.md)
+- [0034 — Azure hosting, described in Terraform](docs/adr/0034-azure-hosting-with-terraform.md) *(proposed)*
