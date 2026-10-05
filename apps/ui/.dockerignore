@@ -1,0 +1,29 @@
+# The UI image is built with apps/ui as its context (the root .dockerignore excludes apps/ui from
+# the .NET images' context). Keep it to what `next build` reads.
+
+# Installed and built inside the image, never copied from the workstation.
+node_modules
+.next
+out
+tsconfig.tsbuildinfo
+
+# Secrets: .env holds the Clerk secret key, and a copied file stays readable in an image layer.
+# NEXT_PUBLIC_* values reach the build as build arguments instead.
+.env*
+
+# Tests, their browser artefacts and local screenshot tooling.
+src/test
+**/*.test.ts
+**/*.test.tsx
+vitest.config.mts
+.vitest
+.visual
+.shot.mjs
+coverage
+
+# Editor and agent notes.
+*.md
+.git
+.gitignore
+Dockerfile
+.dockerignore
