@@ -4,6 +4,10 @@
 - **Date:** 2026-10-05
 - **Deciders:** Luca Martinelli
 
+> **Amended (2026-10-14) by [ADR-0035](0035-single-lean-prod-and-github-actions.md).** One environment,
+> `prod`, at the smallest sizes; images in private GitHub Container Registry instead of Azure
+> Container Registry; CI/CD in GitHub Actions.
+
 ## Context
 
 Everything so far runs on a workstation: `docker-compose.yml` stands in for PostgreSQL, Service
