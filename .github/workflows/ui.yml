@@ -1,0 +1,50 @@
+# CI for the UI (ADR-0012, ADR-0035): lint, test and build, never deploy. The UI shares no code with
+# the .NET projects, so only its own folder triggers it. The build needs no secrets: the Clerk key is
+# inlined only into the image CD builds.
+name: UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/ui/**
+      - .github/workflows/ui.yml
+  pull_request:
+    paths:
+      - apps/ui/**
+      - .github/workflows/ui.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/ui
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same major as apps/ui/Dockerfile's NODE_VERSION.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/ui/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run build
