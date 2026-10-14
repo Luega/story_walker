@@ -31,3 +31,8 @@ output "application_insights_connection_string" {
   value       = azurerm_application_insights.main.connection_string
   sensitive   = true
 }
+
+output "clerk_publishable_key" {
+  description = "The UI image build needs it as NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, so prod.tfvars stays its one source."
+  value       = var.clerk_publishable_key
+}
