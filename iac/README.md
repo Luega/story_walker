@@ -88,22 +88,27 @@ An app registration that trusts only this repository's `prod` environment:
 
 ```bash
 app_id=$(az ad app create --display-name storywalker-github-deploy --query appId -o tsv)
-az ad sp create --id "$app_id"
+sp_id=$(az ad sp create --id "$app_id" --query id -o tsv)
 az ad app federated-credential create --id "$app_id" --parameters '{
   "name": "github-prod",
   "issuer": "https://token.actions.githubusercontent.com",
   "subject": "repo:Luega/story_walker:environment:prod",
   "audiences": ["api://AzureADTokenExchange"]
 }'
-az role assignment create --assignee "$app_id" --role Contributor --scope /subscriptions/<sub>
-az role assignment create --assignee "$app_id" --role "Role Based Access Control Administrator" \
-  --scope /subscriptions/<sub>
-az role assignment create --assignee "$app_id" --role "Storage Blob Data Contributor" \
+az role assignment create --assignee-object-id "$sp_id" --assignee-principal-type ServicePrincipal \
+  --role Contributor --scope /subscriptions/<sub>
+az role assignment create --assignee-object-id "$sp_id" --assignee-principal-type ServicePrincipal \
+  --role "Role Based Access Control Administrator" --scope /subscriptions/<sub>/resourceGroups/rg-storywalker-prod
+az role assignment create --assignee-object-id "$sp_id" --assignee-principal-type ServicePrincipal \
+  --role "Storage Blob Data Contributor" \
   --scope "$(az storage account show -n <tfstate-account> --query id -o tsv)"
 ```
 
-Role Based Access Control Administrator is there because the apply manages the role assignments in
-`roles.tf`.
+Contributor sits on the subscription because the provider checks resource provider registrations
+there. Role Based Access Control Administrator is there because the apply manages the role
+assignments in `roles.tf`, all inside the app's resource group, so it is granted on that group only.
+Assigning by object id with the principal type spares a lookup that fails while a new principal is
+still replicating, and for an account created with an outside e-mail address.
 
 ### 5. A token to pull the images
 
