@@ -7,7 +7,9 @@ resource "random_password" "postgres_admin" {
 }
 
 resource "azurerm_postgresql_flexible_server" "main" {
-  name                = "psql-${local.name}-${random_string.suffix.result}"
+  # The region is in the name when it differs from the rest: Azure keeps a failed server's name tied
+  # to its region for a while, so the same name cannot be created again elsewhere.
+  name                = join("-", compact(["psql", local.name, random_string.suffix.result, var.postgres_location]))
   resource_group_name = azurerm_resource_group.main.name
   location            = coalesce(var.postgres_location, azurerm_resource_group.main.location)
 
