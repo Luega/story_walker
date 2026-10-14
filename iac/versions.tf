@@ -14,7 +14,7 @@ terraform {
 
   # State lives in an Azure storage account created by hand, once, before the first `init` — it
   # cannot be created by the configuration whose state it holds. Partial configuration: the values
-  # are passed per environment, e.g. `terraform init -backend-config=environments/dev.backend.hcl`.
+  # are passed per environment, e.g. `terraform init -backend-config=environments/prod.backend.hcl`.
   backend "azurerm" {}
 }
 

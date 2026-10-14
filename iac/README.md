@@ -1,7 +1,9 @@
 # iac — Infrastructure as Code
 
-Terraform describing the Azure resources for Story Walker, one state per environment (dev, prod).
-The choices behind it are in [ADR-0034](../docs/adr/0034-azure-hosting-with-terraform.md).
+Terraform describing the Azure resources for Story Walker, in one environment, `prod`, sized as
+small as the code allows. The choices behind it are in
+[ADR-0034](../docs/adr/0034-azure-hosting-with-terraform.md) and
+[ADR-0035](../docs/adr/0035-single-lean-prod-and-github-actions.md).
 
 | File | Resources |
 |---|---|
@@ -38,9 +40,9 @@ Put its name in `environments/<env>.backend.hcl`, and the subscription id in
 ```bash
 cd iac
 export TF_VAR_clerk_secret_key=sk_test_...   # never in a committed file
-terraform init -backend-config=environments/dev.backend.hcl
-terraform plan -var-file=environments/dev.tfvars -out=dev.tfplan
-terraform apply dev.tfplan
+terraform init -backend-config=environments/prod.backend.hcl
+terraform plan -var-file=environments/prod.tfvars -out=prod.tfplan
+terraform apply prod.tfplan
 ```
 
 Until CI has pushed images, `api_image` and `ui_image` stay null and both apps run Microsoft's

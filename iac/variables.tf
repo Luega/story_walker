@@ -4,7 +4,7 @@ variable "subscription_id" {
 }
 
 variable "environment" {
-  description = "Short environment name, part of every resource name: dev, prod."
+  description = "Short environment name, part of every resource name, e.g. prod (ADR-0035 keeps only that one)."
   type        = string
 
   validation {
