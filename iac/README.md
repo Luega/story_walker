@@ -22,45 +22,124 @@ small as the code allows. The choices behind it are in
 The configuration validates (`terraform validate`), but no `plan` or `apply` has been run against a
 subscription yet.
 
-## First run, once per subscription
+## How a deploy works
+
+`.github/workflows/deploy.yml` deploys prod on every push to `main` that touches `apps/`, `src/`,
+`tests/`, `iac/` or the workflows, and on demand from the Actions tab (ADR-0035):
+
+1. it runs the CI workflows (`api.yml`, `worker.yml`, `ui.yml`) and stops if any fails;
+2. signs in to Azure with OIDC: no Azure secret is stored in GitHub;
+3. reads three Terraform outputs: the Application Insights connection string and the Clerk
+   publishable key, which `apps/ui/Dockerfile` inlines at `next build`, and the function app name;
+4. builds both images and pushes them to GitHub Container Registry, private, tagged with the commit
+   SHA;
+5. deploys the worker package to the Flex Consumption app;
+6. runs `terraform apply` with both tags, so Container Apps starts a new revision of each app and
+   moves traffic once it answers its probe. Anything changed under `iac/` is applied in the same run;
+7. deletes all but the last five versions of each image.
+
+On startup the API applies the migrations the database lacks, so the first deploy creates the empty
+schema and later ones apply only new migrations. Nothing is seeded.
+
+To roll back, run the workflow by hand on a branch or tag that points at the earlier commit.
+
+## Bootstrap, once
+
+Everything below is done by hand, once, in this order. `<sub>` is the subscription id.
+
+### 1. Terraform state
 
 The state lives in a storage account that Terraform cannot create for itself:
 
 ```bash
+az login
 az group create -n rg-storywalker-tfstate -l swedencentral
 az storage account create -n <tfstate-account> -g rg-storywalker-tfstate --sku Standard_LRS \
   --allow-blob-public-access false --min-tls-version TLS1_2
 az storage container create -n tfstate --account-name <tfstate-account> --auth-mode login
 ```
 
-Put its name in `environments/<env>.backend.hcl`, and the subscription id in
-`environments/<env>.tfvars`. Your account needs **Storage Blob Data Contributor** on it.
+Put its name in `environments/prod.backend.hcl`. Your account needs **Storage Blob Data
+Contributor** on it.
 
-## Plan and apply
+### 2. Values in `environments/prod.tfvars`
+
+Set `subscription_id`, `clerk_authority` and `clerk_publishable_key`. None of them is a secret, and
+the deploy reads the publishable key back from Terraform rather than keeping a second copy.
+
+### 3. First apply, from your machine
+
+It creates every resource, with both apps on Microsoft's quickstart placeholder until the first
+deploy. Your account needs **Owner** (or Contributor plus Role Based Access Control Administrator),
+because the configuration assigns roles.
 
 ```bash
 cd iac
-export TF_VAR_clerk_secret_key=sk_test_...   # never in a committed file
+export TF_VAR_clerk_secret_key=sk_test_...                # never in a committed file
+export TF_VAR_budget_contact_emails='["you@example.com"]'  # optional: no budget without it
 terraform init -backend-config=environments/prod.backend.hcl
 terraform plan -var-file=environments/prod.tfvars -out=prod.tfplan
 terraform apply prod.tfplan
 ```
 
-Until CI has pushed images, `api_image` and `ui_image` stay null and both apps run Microsoft's
-quickstart placeholder. Afterwards pass them on the command line:
-`-var api_image=ghcr.io/<owner>/storywalker-api:<sha>`, with `ghcr_username` and
-`TF_VAR_ghcr_pull_token` set.
+### 4. An identity for GitHub Actions
 
-## Still missing before a real deployment
+An app registration that trusts only this repository's `prod` environment:
 
-- **CI/CD** in `../.github/workflows`: build and push both images, deploy the worker package to the
-  function app (`function_app_name` output), then apply with the new tags. The UI image is built
-  per environment: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
-  `NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING` (the `application_insights_connection_string`
-  output) are build arguments of `apps/ui/Dockerfile`, inlined at `next build`.
-- **Clerk:** add the `ui_url` output to the instance's allowed origins.
+```bash
+app_id=$(az ad app create --display-name storywalker-github-deploy --query appId -o tsv)
+az ad sp create --id "$app_id"
+az ad app federated-credential create --id "$app_id" --parameters '{
+  "name": "github-prod",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:Luega/story_walker:environment:prod",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+az role assignment create --assignee "$app_id" --role Contributor --scope /subscriptions/<sub>
+az role assignment create --assignee "$app_id" --role "Role Based Access Control Administrator" \
+  --scope /subscriptions/<sub>
+az role assignment create --assignee "$app_id" --role "Storage Blob Data Contributor" \
+  --scope "$(az storage account show -n <tfstate-account> --query id -o tsv)"
+```
+
+Role Based Access Control Administrator is there because the apply manages the role assignments in
+`roles.tf`.
+
+### 5. A token to pull the images
+
+GitHub → Settings → Developer settings → Personal access tokens → **Tokens (classic)**, with only
+the `read:packages` scope. GitHub Container Registry does not accept fine-grained tokens. Give it an
+expiry you will remember: when it expires, the apps keep running but can no longer start a new
+revision. Renewing means a new token in the `GHCR_PULL_TOKEN` secret and a deploy.
+
+### 6. The GitHub environment
+
+Repository → Settings → Environments → **New environment** `prod`, with these secrets:
+
+| Secret | Value |
+|---|---|
+| `AZURE_CLIENT_ID` | `$app_id` from step 4 |
+| `AZURE_TENANT_ID` | `az account show --query tenantId -o tsv` |
+| `AZURE_SUBSCRIPTION_ID` | `<sub>` |
+| `CLERK_SECRET_KEY` | the Clerk secret key |
+| `GHCR_PULL_TOKEN` | the token from step 5 |
+
+And optionally the variable `BUDGET_CONTACT_EMAILS`, a JSON list such as `["you@example.com"]`.
+Adding yourself as a required reviewer makes every deploy wait for your approval.
+
+### 7. First deploy
+
+Actions → **Deploy** → Run workflow. Then:
+
+- add the `ui_url` output to the Clerk instance's allowed origins;
+- sign in once: that starts the API, which creates the schema. Until then the worker's timer
+  (ADR-0031) logs that the tables do not exist.
+
+## Still to watch
+
 - **Image model region:** `gpt-image-1-mini` is offered in few regions and may need access approval;
   move `foundry_location` if the deployment is refused.
+- **The pull token's expiry** (step 5).
 
 ## Secrets that remain
 
