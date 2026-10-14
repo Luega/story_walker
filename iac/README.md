@@ -129,11 +129,11 @@ Adding yourself as a required reviewer makes every deploy wait for your approval
 
 ### 7. First deploy
 
-Actions → **Deploy** → Run workflow. Then:
+Actions → **Deploy** → Run workflow. Then sign in once at the `ui_url` output: that starts the API,
+which creates the schema. Until then the worker's timer (ADR-0031) logs that the tables do not exist.
 
-- add the `ui_url` output to the Clerk instance's allowed origins;
-- sign in once: that starts the API, which creates the schema. Until then the worker's timer
-  (ADR-0031) logs that the tables do not exist.
+Clerk needs no change for the address: Terraform already puts `ui_url` in the API's
+`Clerk__AuthorizedParties`, and a Clerk development instance is not tied to a domain.
 
 ## Still to watch
 

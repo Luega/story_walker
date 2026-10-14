@@ -3,7 +3,7 @@ output "resource_group_name" {
 }
 
 output "ui_url" {
-  description = "Where the app is served. Add it to the Clerk instance's allowed origins."
+  description = "Where the app is served. The API already trusts tokens from it (Clerk__AuthorizedParties)."
   value       = local.ui_origin
 }
 
