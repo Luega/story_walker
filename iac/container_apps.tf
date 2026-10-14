@@ -14,6 +14,13 @@ resource "azurerm_container_app_environment" "main" {
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
   tags                       = local.tags
+
+  # Azure now creates every environment with the serverless Consumption profile; declared here so
+  # each plan does not try to remove it. Same per-second billing and free grant as before.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 # The API's identity, for Foundry. User-assigned, so its role is in place by the time the first
@@ -48,6 +55,7 @@ resource "azurerm_container_app" "api" {
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
   revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -165,6 +173,7 @@ resource "azurerm_container_app" "ui" {
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
   revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
 
   dynamic "registry" {
     for_each = var.ui_image == null ? [] : [1]
