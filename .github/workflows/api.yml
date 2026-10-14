@@ -1,0 +1,47 @@
+# CI for the API (ADR-0012, ADR-0035): build and test, never deploy. Triggered by the API itself, the
+# shared libraries it is built from, the tests and the package versions.
+name: API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/api/**
+      - src/**
+      - tests/**
+      - Directory.Packages.props
+      - .github/workflows/api.yml
+  pull_request:
+    paths:
+      - apps/api/**
+      - src/**
+      - tests/**
+      - Directory.Packages.props
+      - .github/workflows/api.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # The test project references the API, which brings the shared libraries with it.
+      - name: Build
+        run: dotnet build tests/StoryWalker.Api.Tests/StoryWalker.Api.Tests.csproj --configuration Release
+
+      # The integration tests start a real PostgreSQL through Testcontainers (ADR-0017); the hosted
+      # runner already has Docker.
+      - name: Test
+        run: dotnet test tests/StoryWalker.Api.Tests/StoryWalker.Api.Tests.csproj --no-build --configuration Release
