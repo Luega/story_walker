@@ -3,15 +3,10 @@
 # Only the UI is reachable from the internet. The browser never calls the API directly — the UI's
 # server-side route forwards /api/* with the Clerk token attached (ADR-0021) — so the API's ingress
 # is internal to the environment.
-
-resource "azurerm_container_registry" "main" {
-  name                = "${local.compact}acr"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  sku                 = "Basic"
-  admin_enabled       = false
-  tags                = local.tags
-}
+#
+# The images live in GitHub Container Registry, private (ADR-0035). Container Apps pulls them with a
+# read:packages token; until CI has pushed an image the app runs the public placeholder and needs no
+# registry at all.
 
 resource "azurerm_container_app_environment" "main" {
   name                       = "cae-${local.name}"
@@ -21,17 +16,10 @@ resource "azurerm_container_app_environment" "main" {
   tags                       = local.tags
 }
 
-# One user-assigned identity per app, created before the app so its AcrPull role is in place by the
-# time the first revision pulls an image. A system-assigned identity would only exist after.
+# The API's identity, for Foundry. User-assigned, so its role is in place by the time the first
+# revision starts. The UI calls nothing in Azure and has none.
 resource "azurerm_user_assigned_identity" "api" {
   name                = "id-${local.name}-api"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  tags                = local.tags
-}
-
-resource "azurerm_user_assigned_identity" "ui" {
-  name                = "id-${local.name}-ui"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   tags                = local.tags
@@ -43,6 +31,8 @@ locals {
 
   # The image's port: 3000 for the UI (apps/ui/Dockerfile), 8080 for the API.
   ui_port = var.ui_image == null ? 80 : 3000
+
+  ghcr_server = "ghcr.io"
 
   api_name = "ca-${local.name}-api"
   ui_name  = "ca-${local.name}-ui"
@@ -64,9 +54,21 @@ resource "azurerm_container_app" "api" {
     identity_ids = [azurerm_user_assigned_identity.api.id]
   }
 
-  registry {
-    server   = azurerm_container_registry.main.login_server
-    identity = azurerm_user_assigned_identity.api.id
+  dynamic "registry" {
+    for_each = var.api_image == null ? [] : [1]
+    content {
+      server               = local.ghcr_server
+      username             = var.ghcr_username
+      password_secret_name = "ghcr-pull-token"
+    }
+  }
+
+  dynamic "secret" {
+    for_each = var.api_image == null ? [] : [1]
+    content {
+      name  = "ghcr-pull-token"
+      value = var.ghcr_pull_token
+    }
   }
 
   secret {
@@ -150,7 +152,12 @@ resource "azurerm_container_app" "api" {
 
   tags = local.tags
 
-  depends_on = [azurerm_role_assignment.api_acr_pull]
+  lifecycle {
+    precondition {
+      condition     = var.api_image == null || (var.ghcr_username != null && var.ghcr_pull_token != null)
+      error_message = "An api_image in GHCR needs ghcr_username and ghcr_pull_token to pull it."
+    }
+  }
 }
 
 resource "azurerm_container_app" "ui" {
@@ -159,14 +166,21 @@ resource "azurerm_container_app" "ui" {
   container_app_environment_id = azurerm_container_app_environment.main.id
   revision_mode                = "Single"
 
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.ui.id]
+  dynamic "registry" {
+    for_each = var.ui_image == null ? [] : [1]
+    content {
+      server               = local.ghcr_server
+      username             = var.ghcr_username
+      password_secret_name = "ghcr-pull-token"
+    }
   }
 
-  registry {
-    server   = azurerm_container_registry.main.login_server
-    identity = azurerm_user_assigned_identity.ui.id
+  dynamic "secret" {
+    for_each = var.ui_image == null ? [] : [1]
+    content {
+      name  = "ghcr-pull-token"
+      value = var.ghcr_pull_token
+    }
   }
 
   secret {
@@ -252,5 +266,10 @@ resource "azurerm_container_app" "ui" {
 
   tags = local.tags
 
-  depends_on = [azurerm_role_assignment.ui_acr_pull]
+  lifecycle {
+    precondition {
+      condition     = var.ui_image == null || (var.ghcr_username != null && var.ghcr_pull_token != null)
+      error_message = "A ui_image in GHCR needs ghcr_username and ghcr_pull_token to pull it."
+    }
+  }
 }

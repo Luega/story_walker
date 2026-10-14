@@ -1,19 +1,5 @@
 # Who may do what. Every identity gets the narrowest built-in role that covers what its code calls.
 
-# --- Pulling images -----------------------------------------------------------
-
-resource "azurerm_role_assignment" "api_acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.api.principal_id
-}
-
-resource "azurerm_role_assignment" "ui_acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.ui.principal_id
-}
-
 # --- Foundry: chat for the API, chat and images for the worker ----------------
 # "Cognitive Services OpenAI User" covers inference on the deployments and nothing else; it cannot
 # create, change or delete them.

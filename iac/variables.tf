@@ -102,15 +102,28 @@ variable "functions_instance_memory_mb" {
 # --- Container Apps: API and UI -----------------------------------------------
 
 variable "api_image" {
-  description = "API image, e.g. <registry>.azurecr.io/storywalker-api:<sha>. Null runs a placeholder until CI has pushed one."
+  description = "API image, e.g. ghcr.io/<owner>/storywalker-api:<sha>. Null runs a placeholder until CI has pushed one."
   type        = string
   default     = null
 }
 
 variable "ui_image" {
-  description = "UI image, e.g. <registry>.azurecr.io/storywalker-ui:<sha>. Null runs a placeholder until CI has pushed one."
+  description = "UI image, e.g. ghcr.io/<owner>/storywalker-ui:<sha>. Null runs a placeholder until CI has pushed one."
   type        = string
   default     = null
+}
+
+variable "ghcr_username" {
+  description = "The GitHub account the pull token belongs to. Needed once api_image or ui_image is set."
+  type        = string
+  default     = null
+}
+
+variable "ghcr_pull_token" {
+  description = "Classic personal access token with only read:packages, for pulling the private images (ADR-0035). Pass it through TF_VAR_ghcr_pull_token, never a committed tfvars file."
+  type        = string
+  default     = null
+  sensitive   = true
 }
 
 variable "api_max_replicas" {

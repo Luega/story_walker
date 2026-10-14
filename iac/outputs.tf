@@ -7,11 +7,6 @@ output "ui_url" {
   value       = local.ui_origin
 }
 
-output "container_registry_login_server" {
-  description = "Where CI pushes the api and ui images."
-  value       = azurerm_container_registry.main.login_server
-}
-
 output "function_app_name" {
   description = "Target of the worker's deployment (az functionapp deployment / Azure/functions-action)."
   value       = azurerm_function_app_flex_consumption.worker.name

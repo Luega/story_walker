@@ -13,7 +13,7 @@ small as the code allows. The choices behind it are in
 | `storage.tf` | Public page-image account and its `story-images` container (ADR-0010); private worker host storage |
 | `foundry.tf` | Foundry `AIServices` resource with a chat and an image deployment, keys disabled (ADR-0011) |
 | `functions.tf` | The generation worker on Flex Consumption (ADR-0020) |
-| `container_apps.tf` | Container registry, Container Apps environment, the API (internal ingress) and the UI (public) |
+| `container_apps.tf` | Container Apps environment, the API (internal ingress) and the UI (public), pulling private images from GitHub Container Registry |
 | `roles.tf` | Role assignments for the managed identities |
 
 ## Nothing here has been applied
@@ -47,7 +47,8 @@ terraform apply prod.tfplan
 
 Until CI has pushed images, `api_image` and `ui_image` stay null and both apps run Microsoft's
 quickstart placeholder. Afterwards pass them on the command line:
-`-var api_image=<registry>/storywalker-api:<sha>`.
+`-var api_image=ghcr.io/<owner>/storywalker-api:<sha>`, with `ghcr_username` and
+`TF_VAR_ghcr_pull_token` set.
 
 ## Still missing before a real deployment
 
@@ -68,6 +69,8 @@ and they are in the Terraform state, which is why the state account allows no pu
 - the PostgreSQL admin password (`ConnectionStrings__Postgres`);
 - the API's send-only Service Bus key (`ServiceBus__ConnectionString`);
 - the page-image account key (`Storage__ConnectionString`);
-- the Clerk secret key.
+- the Clerk secret key;
+- the GitHub token that pulls the private images (`ghcr_pull_token`, ADR-0035), which GitHub
+  Container Registry cannot replace with an Azure identity.
 
-Foundry, the worker's Service Bus trigger and the image pulls already use managed identities.
+Foundry and the worker's Service Bus trigger already use managed identities.
