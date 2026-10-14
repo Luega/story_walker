@@ -1,0 +1,46 @@
+# CI for the generation worker (ADR-0012, ADR-0035): build and test, never deploy. The worker has no
+# test project of its own; the adapters it runs (renderer, image generators, image store) live in
+# src/ and are covered by the shared suite.
+name: Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/functions/**
+      - src/**
+      - tests/**
+      - Directory.Packages.props
+      - .github/workflows/worker.yml
+  pull_request:
+    paths:
+      - apps/functions/**
+      - src/**
+      - tests/**
+      - Directory.Packages.props
+      - .github/workflows/worker.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build the worker
+        run: dotnet build apps/functions/StoryWalker.Functions.csproj --configuration Release
+
+      # Testcontainers needs Docker (ADR-0017); the hosted runner has it.
+      - name: Test
+        run: dotnet test tests/StoryWalker.Api.Tests/StoryWalker.Api.Tests.csproj --configuration Release
