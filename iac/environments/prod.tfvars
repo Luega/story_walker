@@ -1,21 +1,28 @@
-# Non-secret values for the prod environment. Secrets go in environment variables:
-#   export TF_VAR_clerk_secret_key=sk_live_...
+# Non-secret values for prod, the only environment (ADR-0035). Sizes are the variables' defaults —
+# the smallest the code allows: PostgreSQL B_Standard_B1ms with 32 GB and seven days of backups
+# (covered by the Azure free account for its first year), Service Bus Basic. Resize here, in place.
+# Secrets go in environment variables:
+#   export TF_VAR_clerk_secret_key=sk_test_...
 environment     = "prod"
 subscription_id = "00000000-0000-0000-0000-000000000000"
 
 chat_model = {
-  name     = "gpt-5.6-luna"
-  capacity = 100
+  name = "gpt-5.6-luna"
 }
 
 image_model = {
-  name     = "gpt-image-1-mini"
-  capacity = 2
+  name = "gpt-image-1-mini"
 }
 
-postgres_sku                   = "GP_Standard_D2ds_v5"
-postgres_backup_retention_days = 35
-servicebus_sku                 = "Standard"
+# A handful of users: one replica each is enough, and caps what an unexpected burst can cost.
+api_max_replicas = 1
+ui_max_replicas  = 1
 
-clerk_authority       = "https://clerk.<your-domain>"
-clerk_publishable_key = "pk_live_..."
+# A Clerk production instance needs a domain of our own; until there is one, the development
+# instance serves the Container Apps default domain.
+clerk_authority       = "https://<your-instance>.clerk.accounts.dev"
+clerk_publishable_key = "pk_test_..."
+
+# Set by CI once the images exist; null runs a placeholder.
+# api_image = "ghcr.io/<owner>/storywalker-api:<sha>"
+# ui_image  = "ghcr.io/<owner>/storywalker-ui:<sha>"
