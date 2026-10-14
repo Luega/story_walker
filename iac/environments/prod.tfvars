@@ -18,6 +18,9 @@ image_model = {
 api_max_replicas = 1
 ui_max_replicas  = 1
 
+# 0.15 GB a day stays inside the 5 GB a month Log Analytics ingests for free (ADR-0035).
+log_daily_quota_gb = 0.15
+
 # A Clerk production instance needs a domain of our own; until there is one, the development
 # instance serves the Container Apps default domain.
 clerk_authority       = "https://<your-instance>.clerk.accounts.dev"

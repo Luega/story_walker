@@ -57,6 +57,14 @@ variable "image_model" {
   }
 }
 
+# --- Telemetry (ADR-0023) ----------------------------------------------------
+
+variable "log_daily_quota_gb" {
+  description = "Daily ingestion cap on the Log Analytics workspace, Application Insights included; -1 for none. Past it, telemetry is dropped until the next UTC day."
+  type        = number
+  default     = -1
+}
+
 # --- PostgreSQL ---------------------------------------------------------------
 
 variable "postgres_sku" {
