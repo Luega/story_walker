@@ -87,7 +87,7 @@ public sealed class StoryWalkerApiFactory : WebApplicationFactory<Program>, IAsy
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // "Testing" (not Development) so Program.cs's startup auto-migrate/seed block stays off —
+        // "Testing" so Program.cs's startup migration, which runs everywhere else, stays off —
         // this fixture owns migration and seeding for determinism. The connection string is supplied
         // via the ConnectionStrings__Postgres environment variable (set in InitializeAsync), which
         // CreateBuilder reads before builder.Build() — the same mechanism docker-compose uses.

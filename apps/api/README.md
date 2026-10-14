@@ -52,8 +52,8 @@ dotnet run --project apps/api      # build + run the API on the host
 docker compose --profile api up --build
 ```
 
-In both modes, on startup in **Development** the API applies the latest EF Core migration, then
-serves. Nothing is seeded: a demo story would belong to no real account, so a first sign-in starts on
+In both modes, and in Azure too, on startup the API applies whatever EF Core migrations the database
+lacks, then serves (ADR-0035); on a restart that is nothing. Nothing is seeded: a demo story would belong to no real account, so a first sign-in starts on
 an empty dashboard.
 
 - Swagger UI — <http://localhost:5080/swagger> (same port on the host and in Docker)
@@ -117,7 +117,7 @@ dotnet test StoryWalker.slnx     # requires Docker running (Testcontainers pulls
 
 The API exposes its `internal` `Program` class to the test assembly via `<InternalsVisibleTo>` in
 [`StoryWalker.Api.csproj`](StoryWalker.Api.csproj). The test environment is `Testing`, so the startup
-auto-migrate/seed block (Development-only) stays off — the test fixture owns migration and seeding.
+migration (skipped only there) stays off — the test fixture owns migration and seeding.
 
 ## Migrations
 
