@@ -4,7 +4,7 @@
 # Secrets go in environment variables:
 #   export TF_VAR_clerk_secret_key=sk_test_...
 environment     = "prod"
-subscription_id = "00000000-0000-0000-0000-000000000000"
+subscription_id = "e636536c-8578-4283-8475-4769b8a7071a"
 
 chat_model = {
   name = "gpt-5.6-luna"
@@ -23,8 +23,8 @@ log_daily_quota_gb = 0.15
 
 # A Clerk production instance needs a domain of our own; until there is one, the development
 # instance serves the Container Apps default domain.
-clerk_authority       = "https://<your-instance>.clerk.accounts.dev"
-clerk_publishable_key = "pk_test_..."
+clerk_authority       = "https://able-puma-4364.clerk.accounts.dev"
+clerk_publishable_key = "pk_test_YWJsZS1wdW1hLTQzNjQuY2xlcmsuYWNjb3VudHMuZGV2JA"
 
 # Set by CI once the images exist; null runs a placeholder.
 # api_image = "ghcr.io/<owner>/storywalker-api:<sha>"
