@@ -15,6 +15,7 @@ small as the code allows. The choices behind it are in
 | `functions.tf` | The generation worker on Flex Consumption (ADR-0020) |
 | `container_apps.tf` | Container Apps environment, the API (internal ingress) and the UI (public), pulling private images from GitHub Container Registry |
 | `roles.tf` | Role assignments for the managed identities |
+| `budget.tf` | Monthly budget on the resource group, with e-mail alerts (ADR-0035) |
 
 ## Nothing here has been applied
 

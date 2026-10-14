@@ -57,6 +57,20 @@ variable "image_model" {
   }
 }
 
+# --- Budget (ADR-0035) -------------------------------------------------------
+
+variable "monthly_budget" {
+  description = "Monthly budget for the resource group, in the billing currency. Alerts at 50, 80 and 100 % spent, and at 100 % forecast."
+  type        = number
+  default     = 20
+}
+
+variable "budget_contact_emails" {
+  description = "Who the budget alerts go to. Empty creates no budget. Passed through TF_VAR_budget_contact_emails, so no address is committed."
+  type        = list(string)
+  default     = []
+}
+
 # --- Telemetry (ADR-0023) ----------------------------------------------------
 
 variable "log_daily_quota_gb" {
