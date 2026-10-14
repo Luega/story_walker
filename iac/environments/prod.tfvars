@@ -6,12 +6,16 @@
 environment     = "prod"
 subscription_id = "e636536c-8578-4283-8475-4769b8a7071a"
 
+# The Free Trial subscription has no quota for gpt-5.6-luna or any OpenAI image model (ADR-0035);
+# these two have it. Back to gpt-5.6-luna and gpt-image-1-mini once quota is granted.
 chat_model = {
-  name = "gpt-5.6-luna"
+  name = "gpt-5-mini"
 }
 
 image_model = {
-  name = "gpt-image-1-mini"
+  name    = "FLUX.2-pro"
+  format  = "Black Forest Labs"
+  version = "1"
 }
 
 # A handful of users: one replica each is enough, and caps what an unexpected burst can cost.

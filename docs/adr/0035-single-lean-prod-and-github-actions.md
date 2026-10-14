@@ -42,6 +42,10 @@ We will run **one environment, `prod`**, at the smallest sizes the code allows, 
   the placeholder image. One deploy runs at a time.
 - **GitHub reaches Azure through OIDC:** a federated credential on an Entra app registration trusts
   only this repository's `prod` environment. No Azure secret is stored in GitHub.
+- **Models the subscription has quota for.** The Free Trial subscription prod runs in has no quota
+  (0) for the GPT-5.6 family or any OpenAI image model, so prod uses `gpt-5-mini` for chat and
+  `FLUX.2-pro` for illustrations, both supported without code changes. Prod returns to
+  `gpt-5.6-luna` and `gpt-image-1-mini` when quota is granted, by changing `prod.tfvars`.
 - **The API creates and updates the schema at startup**, in every environment except `Testing`
   (where the test fixture owns it). EF applies only the migrations missing from
   `__EFMigrationsHistory`; nothing is seeded, so prod starts empty and fills with use.
@@ -67,6 +71,8 @@ We will run **one environment, `prod`**, at the smallest sizes the code allows, 
   `api_max_replicas` means moving migrations into `deploy.yml` first.
 
 ### Things this decision obliges us to build or watch
+- Checking the agent and the illustrations on `gpt-5-mini` and `FLUX.2-pro`, which local
+  development does not use, and requesting quota for the original models.
 - The one-time bootstrap by hand: the state storage account, the app registration and its
   federated credential and roles, the GitHub environment's secrets, the first `apply`.
 - Renewing the GHCR pull token before it expires.
