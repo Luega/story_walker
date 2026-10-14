@@ -9,7 +9,7 @@ resource "random_password" "postgres_admin" {
 resource "azurerm_postgresql_flexible_server" "main" {
   name                = "psql-${local.name}-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  location            = coalesce(var.postgres_location, azurerm_resource_group.main.location)
 
   version    = "17"
   sku_name   = var.postgres_sku

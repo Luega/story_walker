@@ -81,6 +81,12 @@ variable "log_daily_quota_gb" {
 
 # --- PostgreSQL ---------------------------------------------------------------
 
+variable "postgres_location" {
+  description = "Region of the PostgreSQL server; null keeps it with everything else. Separate because a region can run out of a compute size, as swedencentral did for B1ms on a Free Trial subscription."
+  type        = string
+  default     = null
+}
+
 variable "postgres_sku" {
   description = "PostgreSQL Flexible Server SKU."
   type        = string
