@@ -1,18 +1,12 @@
-# CI for the generation worker (ADR-0012, ADR-0035): build, never deploy. The worker has no test
+# CI for the generation worker (ADR-0012, ADR-0035, ADR-0036): build, never deploy. The worker has no test
 # project of its own; what it runs (renderer, image generators, image store) lives in src/, and the
 # API workflow tests that on every change to src/ or tests/, so running the suite here too would only
 # spend the same minutes twice.
 name: Worker
 
 on:
-  # On main, deploy.yml calls this workflow before it deploys, so a push needs no run of its own.
+  # Called by ci.yml (ADR-0036), which decides from the changed files whether it runs.
   workflow_call:
-  pull_request:
-    paths:
-      - apps/functions/**
-      - src/**
-      - Directory.Packages.props
-      - .github/workflows/worker.yml
 
 permissions:
   contents: read

@@ -1,5 +1,5 @@
-# CD for prod (ADR-0035). On a push to main that touches what runs in Azure, or by hand: run the three
-# CI workflows, then build and push both images to GitHub Container Registry, deploy the worker
+# CD for prod (ADR-0035). On a push to main that touches what runs in Azure, or by hand: run the CI of
+# the components the push changed (ci.yml, ADR-0036), then build and push both images to GitHub Container Registry, deploy the worker
 # package, and apply Terraform with the new image tags. Both images are built on every run, so the
 # apply always has both tags and can never fall back to the placeholder image.
 #
@@ -27,17 +27,11 @@ permissions:
   contents: read
 
 jobs:
-  api:
-    uses: ./.github/workflows/api.yml
-
-  worker:
-    uses: ./.github/workflows/worker.yml
-
-  ui:
-    uses: ./.github/workflows/ui.yml
+  ci:
+    uses: ./.github/workflows/ci.yml
 
   deploy:
-    needs: [api, worker, ui]
+    needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # The OIDC subject is repo:<owner>/<repo>:environment:prod; the federated credential on Azure

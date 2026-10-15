@@ -1,17 +1,10 @@
-# CI for the API (ADR-0012, ADR-0035): build and test, never deploy. On a pull request it runs when the
-# API, the shared libraries it is built from, the tests or the package versions change.
+# CI for the API (ADR-0012, ADR-0035, ADR-0036): build and test, never deploy. It runs when the API, the
+# shared libraries it is built from, the tests or the package versions change.
 name: API
 
 on:
-  # On main, deploy.yml calls this workflow before it deploys, so a push needs no run of its own.
+  # Called by ci.yml (ADR-0036), which decides from the changed files whether it runs.
   workflow_call:
-  pull_request:
-    paths:
-      - apps/api/**
-      - src/**
-      - tests/**
-      - Directory.Packages.props
-      - .github/workflows/api.yml
 
 permissions:
   contents: read
