@@ -330,6 +330,32 @@ public sealed class GenerationServicesTests(StoryWalkerApiFactory factory)
         Assert.Equal("Page 1 text.", page.Content);
     }
 
+    // What FLUX.2-pro answered for page 4 of a real story on 2026-10-15, as FluxImageGenerator
+    // carries it: a different code from OpenAI's for the same refusal.
+    private static HttpRequestException FluxContentSafetyViolation() =>
+        new(
+            """FLUX request to /providers/blackforestlabs/v1/flux-2-pro failed with 400 BadRequest: {"error":{"code":"content_safety_violation","message":"Content violated RAI policy blocking criteria (BingBlockList_Prompt).","details":"Content violated RAI policy blocking criteria (BingBlockList_Prompt)."}}""",
+            null,
+            HttpStatusCode.BadRequest
+        );
+
+    [Fact]
+    public async Task A_FLUX_safety_refusal_is_rewritten_like_any_other()
+    {
+        await _factory.ResetAsync();
+        var storyId = await SeedGeneratingStoryAsync();
+        var generator = new FakeImageGenerator { ThrowOnGenerate = FluxContentSafetyViolation(), FailuresBeforeSuccess = 1 };
+
+        await _factory.ExecuteDbAsync(async db =>
+        {
+            await new StoryPersister(db).PersistPagesAsync(storyId, Brief(), Ct);
+            Assert.Equal(PageRenderOutcome.Rendered, await NewRenderer(db, generator, new InMemoryImageStore()).RenderAsync(storyId, 1, Ct));
+        });
+
+        Assert.Equal(2, generator.CallCount);
+        Assert.StartsWith(RewrittenPrompt, generator.Prompts[1], StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task The_rewrite_is_asked_for_with_the_refused_prompt_and_the_page_text()
     {

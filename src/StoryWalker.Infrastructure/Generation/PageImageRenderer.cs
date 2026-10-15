@@ -244,13 +244,15 @@ public sealed class PageImageRenderer(
 
     /// <summary>
     /// The error codes image providers use when their safety system refuses a prompt:
-    /// <c>moderation_blocked</c> (gpt-image), <c>content_policy_violation</c> (dall-e), and Azure's
-    /// own content filter. Matched in the message, where the image generators put the response body.
+    /// <c>moderation_blocked</c> (gpt-image), <c>content_policy_violation</c> (dall-e),
+    /// <c>content_safety_violation</c> (FLUX on Foundry), and Azure's own content filter. Matched in
+    /// the message, where the image generators put the response body.
     /// </summary>
     private static readonly string[] ModerationCodes =
     [
         "moderation_blocked",
         "content_policy_violation",
+        "content_safety_violation",
         "content_filter",
         "ResponsibleAIPolicyViolation",
     ];
