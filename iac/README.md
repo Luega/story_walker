@@ -27,7 +27,8 @@ subscription yet.
 `.github/workflows/deploy.yml` deploys prod on every push to `main` that touches `apps/`, `src/`,
 `tests/`, `iac/` or the workflows, and on demand from the Actions tab (ADR-0035):
 
-1. it runs the CI workflows (`api.yml`, `worker.yml`, `ui.yml`) and stops if any fails;
+1. it runs `ci.yml`, which runs the CI workflows (`api.yml`, `worker.yml`, `ui.yml`) of the
+   components the push changed (ADR-0036), and stops if any fails;
 2. signs in to Azure with OIDC: no Azure secret is stored in GitHub;
 3. reads three Terraform outputs: the Application Insights connection string and the Clerk
    publishable key, which `apps/ui/Dockerfile` inlines at `next build`, and the function app name;

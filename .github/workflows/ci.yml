@@ -1,0 +1,95 @@
+# The one CI entry point (ADR-0036): on every pull request, and called by deploy.yml before it deploys.
+# It lists the changed files, runs only the component workflows they concern, and ends with
+# ci-passed, the single check the main branch ruleset requires. A workflow that is not needed is
+# skipped, which ci-passed does not count as a failure.
+name: CI
+
+on:
+  workflow_call:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      worker: ${{ steps.filter.outputs.worker }}
+      ui: ${{ steps.filter.outputs.ui }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # a push's previous commit may be several commits back
+
+      # On a pull request the checkout is a merge commit whose first parent is the base branch, so
+      # HEAD^1..HEAD is exactly what the pull request changes. On a push, it is what the push
+      # changed. Otherwise — a manual run, a first push, a rewritten history — everything runs.
+      - name: List the changed files
+        id: filter
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          range=""
+          case "$GITHUB_EVENT_NAME" in
+            pull_request) range="HEAD^1..HEAD" ;;
+            push)
+              if [[ ! "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+                range="$BEFORE..$GITHUB_SHA"
+              fi
+              ;;
+          esac
+
+          if [ -z "$range" ]; then
+            echo "No range to compare; running everything."
+            files="*"
+          else
+            files="$(git diff --name-only "$range")"
+            printf 'Changed files:\n%s\n' "$files"
+          fi
+
+          changed() { [ "$files" = "*" ] || grep -qE "$1" <<< "$files"; }
+          # Each workflow also runs when the workflow itself, or this one, changes.
+          shared='^(src/|Directory\.Packages\.props$|\.github/workflows/ci\.yml$)'
+          {
+            changed "$shared|^(apps/api/|tests/|\.github/workflows/api\.yml$)" && echo "api=true" || echo "api=false"
+            changed "$shared|^(apps/functions/|\.github/workflows/worker\.yml$)" && echo "worker=true" || echo "worker=false"
+            changed '^(apps/ui/|\.github/workflows/(ui|ci)\.yml$)' && echo "ui=true" || echo "ui=false"
+          } >> "$GITHUB_OUTPUT"
+
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    uses: ./.github/workflows/api.yml
+
+  worker:
+    needs: changes
+    if: needs.changes.outputs.worker == 'true'
+    uses: ./.github/workflows/worker.yml
+
+  ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    uses: ./.github/workflows/ui.yml
+
+  # The required check. always() makes it run even when a job before it failed, so the failure
+  # shows here; without it a failure would skip this job, and a skipped required check passes.
+  ci-passed:
+    needs: [changes, api, worker, ui]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "A CI job ended in '$result'."; exit 1 ;;
+            esac
+          done

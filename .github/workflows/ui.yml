@@ -1,15 +1,11 @@
-# CI for the UI (ADR-0012, ADR-0035): lint, test and build, never deploy. The UI shares no code with
-# the .NET projects, so on a pull request only its own folder triggers it. The build needs no
+# CI for the UI (ADR-0012, ADR-0035, ADR-0036): lint, test and build, never deploy. The UI shares no
+# code with the .NET projects, so only its own folder triggers it. The build needs no
 # secrets: the Clerk key is inlined only into the image CD builds.
 name: UI
 
 on:
-  # On main, deploy.yml calls this workflow before it deploys, so a push needs no run of its own.
+  # Called by ci.yml (ADR-0036), which decides from the changed files whether it runs.
   workflow_call:
-  pull_request:
-    paths:
-      - apps/ui/**
-      - .github/workflows/ui.yml
 
 permissions:
   contents: read

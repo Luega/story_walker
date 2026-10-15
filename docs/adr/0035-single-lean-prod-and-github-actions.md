@@ -4,6 +4,10 @@
 - **Date:** 2026-10-14
 - **Deciders:** Luca Martinelli
 
+> **Amended (2026-10-15) by [ADR-0036](0036-pull-requests-and-one-required-check.md).** Changes reach
+> `main` through pull requests; one CI workflow, `ci.yml`, runs only the component workflows a change
+> concerns, on a pull request and before a deploy.
+
 ## Context
 
 [ADR-0034](0034-azure-hosting-with-terraform.md) described the Azure resources for two
