@@ -30,6 +30,9 @@ postgres_location = "northeurope"
 api_max_replicas = 1
 ui_max_replicas  = 1
 
+# In the subscription's billing currency, which is SEK: about $20 a month.
+monthly_budget = 200
+
 # 0.15 GB a day stays inside the 5 GB a month Log Analytics ingests for free (ADR-0035).
 log_daily_quota_gb = 0.15
 
