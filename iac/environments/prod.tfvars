@@ -17,6 +17,9 @@ image_model = {
   name    = "FLUX.2-pro"
   format  = "Black Forest Labs"
   version = "1"
+  # Requests a minute for FLUX: at the default 1, the six pages of a story are throttled (429) and
+  # the story is dead-lettered. FLUX is billed per image, so the whole quota (15) costs nothing.
+  capacity = 15
 }
 
 # swedencentral had no B1ms capacity for this subscription (RegionalAllocationFailed, twice);
