@@ -85,4 +85,5 @@ story_walker/                       # monorepo root
 - [0032 — Dead-lettered messages settle their story and are removed](docs/adr/0032-settle-and-remove-dead-lettered-messages.md)
 - [0033 — A playful visual design, and a one-page reader below desktop](docs/adr/0033-playful-visual-design.md)
 - [0034 — Azure hosting, described in Terraform](docs/adr/0034-azure-hosting-with-terraform.md) *(proposed; amended by 0035)*
-- [0035 — One lean prod environment, deployed by GitHub Actions](docs/adr/0035-single-lean-prod-and-github-actions.md) *(proposed)*
+- [0035 — One lean prod environment, deployed by GitHub Actions](docs/adr/0035-single-lean-prod-and-github-actions.md) *(proposed; amended by 0036)*
+- [0036 — Changes reach main through pull requests, gated by one required check](docs/adr/0036-pull-requests-and-one-required-check.md) *(proposed)*
