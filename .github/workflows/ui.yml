@@ -38,6 +38,11 @@ jobs:
 
       - run: npm run lint
 
+      # The component tests run in a real Chromium driven by Playwright (vitest.config.mts), which the
+      # runner does not have: install the version the locked playwright package expects, with the
+      # system libraries it needs.
+      - run: npx playwright install --with-deps chromium
+
       - run: npm test
 
       - run: npm run build
